@@ -468,11 +468,9 @@
         }
     }
 
-    // Debounced sync - syncs 2 seconds after last change
-    let syncTimer = null;
+    // No auto-sync to sheets (Jarvis handles that)
     function scheduleSync() {
-        clearTimeout(syncTimer);
-        syncTimer = setTimeout(syncToSheets, 2000);
+        autoSave();
     }
 
     // === NAV ===
@@ -713,23 +711,11 @@
         if (e.target === document.getElementById('videoModal')) closeVideoModal();
     });
 
-    // === EXPORT/SYNC ===
+    // === SYNC ===
     function exportData() {
-        const data = {
-            exportDate: new Date().toISOString(),
-            todos: getTodos(),
-            videos: getVideos()
-        };
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'scalex-sync.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast('✓ Daten exportiert — Jarvis kann jetzt syncen');
-        setSyncState('ok');
+        // Trigger a manual sync by reloading from sheets + uploading local
+        loadFromSheets();
+        showToast('✓ Daten mit Google Sheets abgeglichen');
     }
 
     // Also save to a fixed file path for Jarvis to read directly
