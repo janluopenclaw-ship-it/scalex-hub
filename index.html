@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScaleX Hub</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: #111;
+            border-bottom: 1px solid #1e1e1e;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand { font-size: 1.2rem; font-weight: 700; color: #fff; }
+
+        .nav-tabs {
+            display: flex; gap: 4px;
+            background: #1a1a1a; border-radius: 10px; padding: 4px;
+        }
+
+        .nav-tab {
+            padding: 8px 20px; border-radius: 8px; font-size: 0.85rem;
+            font-weight: 500; color: #888; cursor: pointer;
+            transition: all 0.2s; border: none; background: none;
+        }
+
+        .nav-tab.active { background: #2a2a2a; color: #fff; }
+        .nav-tab:hover:not(.active) { color: #bbb; }
+
+        .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-date { font-size: 0.8rem; color: #555; }
+
+        .sync-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #22c55e; display: inline-block;
+        }
+        .sync-dot.syncing { background: #fbbf24; animation: pulse 1s infinite; }
+        .sync-dot.error { background: #ef4444; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .page-header {
+            display: flex; align-items: center;
+            justify-content: space-between; margin-bottom: 24px;
+        }
+
+        .page-title { font-size: 1.4rem; font-weight: 700; color: #fff; }
+
+        .btn {
+            padding: 8px 16px; border-radius: 8px; font-size: 0.85rem;
+            font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+        }
+
+        .btn-primary { background: #3b82f6; color: #fff; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-ghost { background: none; color: #888; border: 1px solid #2a2a2a; }
+        .btn-ghost:hover { border-color: #444; color: #bbb; }
+        .btn-danger { background: none; color: #555; border: none; font-size: 0.8rem; padding: 4px 8px; }
+        .btn-danger:hover { color: #ef4444; }
+
+        .todo-input-row {
+            display: flex; gap: 8px; margin-bottom: 24px;
+        }
+
+        .todo-input-row input, .todo-input-row select {
+            padding: 10px 14px; border-radius: 8px; border: 1px solid #2a2a2a;
+            background: #141414; color: #e0e0e0; font-size: 0.9rem; outline: none;
+        }
+
+        .todo-input-row input:focus, .todo-input-row select:focus { border-color: #3b82f6; }
+        .todo-input-row input { flex: 1; }
+
+        .todo-section { margin-bottom: 28px; }
+
+        .todo-section-title {
+            font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 1.5px; color: #555; margin-bottom: 10px; padding-left: 4px;
+        }
+
+        .todo-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 16px; background: #141414; border-radius: 10px;
+            margin-bottom: 6px; cursor: pointer; transition: all 0.15s; user-select: none;
+        }
+
+        .todo-item:hover { background: #1a1a1a; }
+        .todo-item.done { opacity: 0.35; }
+        .todo-item.done .todo-text { text-decoration: line-through; color: #555; }
+
+        .todo-check {
+            width: 20px; height: 20px; min-width: 20px;
+            border: 2px solid #333; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .todo-item.done .todo-check { background: #22c55e; border-color: #22c55e; }
+
+        .todo-check svg {
+            width: 12px; height: 12px; fill: none; stroke: #0a0a0a;
+            stroke-width: 2.5; stroke-linecap: round;
+            opacity: 0; transition: opacity 0.15s;
+        }
+
+        .todo-item.done .todo-check svg { opacity: 1; }
+
+        .todo-text { flex: 1; font-size: 0.9rem; font-weight: 500; color: #e0e0e0; }
+
+        .todo-tag {
+            font-size: 0.6rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; padding: 3px 8px; border-radius: 4px;
+        }
+
+        .tag-video { background: #1e3a5f; color: #60a5fa; }
+        .tag-social { background: #3b1f4e; color: #c084fc; }
+        .tag-call { background: #3b2f1a; color: #fbbf24; }
+        .tag-other { background: #1a2e1a; color: #4ade80; }
+
+        .todo-progress {
+            margin-top: 20px; padding: 14px 16px;
+            background: #141414; border-radius: 10px;
+        }
+
+        .progress-info {
+            display: flex; justify-content: space-between;
+            font-size: 0.8rem; color: #555; margin-bottom: 8px;
+        }
+
+        .progress-track {
+            height: 5px; background: #2a2a2a; border-radius: 3px; overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #22c55e, #4ade80);
+            border-radius: 3px; width: 0%; transition: width 0.3s;
+        }
+
+        .video-filters {
+            display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+
+        .video-filters select {
+            padding: 8px 12px; border-radius: 8px; border: 1px solid #2a2a2a;
+            background: #141414; color: #e0e0e0; font-size: 0.85rem; outline: none;
+        }
+
+        .video-card {
+            background: #141414; border: 1px solid #1e1e1e; border-radius: 12px;
+            padding: 16px 20px; margin-bottom: 8px;
+            display: grid; grid-template-columns: 80px 1fr 110px 60px 90px 50px;
+            align-items: center; gap: 12px; font-size: 0.85rem;
+        }
+
+        .video-card:hover { border-color: #2a2a2a; }
+
+        .video-header {
+            display: grid; grid-template-columns: 80px 1fr 110px 60px 90px 50px;
+            gap: 12px; padding: 0 20px 10px; font-size: 0.7rem;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #555;
+        }
+
+        .video-date { color: #888; }
+        .video-client { color: #fff; font-weight: 600; }
+        .video-project { color: #a1a1aa; font-size: 0.8rem; }
+
+        .video-status {
+            font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; padding: 4px 10px; border-radius: 20px; text-align: center;
+            cursor: pointer;
+        }
+
+        .status-offen { background: #2a1a1a; color: #f87171; }
+        .status-in-arbeit { background: #2a2a1a; color: #fbbf24; }
+        .status-fertig { background: #1a2a1a; color: #4ade80; }
+        .status-geliefert { background: #1a1a2a; color: #60a5fa; }
+
+        .video-stats { display: flex; gap: 16px; margin-bottom: 24px; }
+
+        .video-stat {
+            background: #141414; border: 1px solid #1e1e1e; border-radius: 12px;
+            padding: 16px 24px; flex: 1; text-align: center;
+        }
+
+        .video-stat .num { font-size: 1.8rem; font-weight: 800; color: #fff; }
+
+        .video-stat .lbl {
+            font-size: 0.7rem; color: #555; text-transform: uppercase;
+            letter-spacing: 1px; margin-top: 4px;
+        }
+
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7); z-index: 200;
+            justify-content: center; align-items: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: #141414; border: 1px solid #2a2a2a;
+            border-radius: 16px; padding: 32px; width: 90%; max-width: 500px;
+        }
+
+        .modal h3 { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 20px; }
+
+        .modal-field { margin-bottom: 14px; }
+
+        .modal-field label {
+            display: block; font-size: 0.75rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: #555; margin-bottom: 6px;
+        }
+
+        .modal-field input, .modal-field select, .modal-field textarea {
+            width: 100%; padding: 10px 14px; border-radius: 8px;
+            border: 1px solid #2a2a2a; background: #0a0a0a;
+            color: #e0e0e0; font-size: 0.9rem; outline: none; font-family: inherit;
+        }
+
+        .modal-field textarea { resize: vertical; min-height: 60px; }
+        .modal-field input:focus, .modal-field select:focus { border-color: #3b82f6; }
+
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+            background: #1a2a1a; border: 1px solid #22c55e; border-radius: 10px;
+            color: #4ade80; font-size: 0.85rem; font-weight: 500;
+            opacity: 0; transition: opacity 0.3s; z-index: 300;
+        }
+
+        .toast.show { opacity: 1; }
+
+        @media (max-width: 700px) {
+            .video-card, .video-header { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .video-stats { flex-direction: column; }
+            .nav { flex-wrap: wrap; gap: 8px; }
+            .todo-input-row { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <div class="nav-brand">⚡ ScaleX Hub</div>
+    <div class="nav-tabs">
+        <button class="nav-tab active" data-page="todo" onclick="switchPage('todo')">📋 To-Do</button>
+        <button class="nav-tab" data-page="videos" onclick="switchPage('videos')">🎬 Videos</button>
+    </div>
+    <div class="nav-right">
+        <div class="sync-dot" id="syncDot" title="Sync Status"></div>
+        <div class="nav-date" id="navDate"></div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- TO-DO PAGE -->
+    <div class="page active" id="page-todo">
+        <div class="page-header">
+            <div class="page-title">Heutige Aufgaben</div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-ghost" onclick="exportData()">☁️ Sync</button>
+                <button class="btn btn-ghost" onclick="clearDoneTodos()">Erledigte löschen</button>
+            </div>
+        </div>
+
+        <div class="todo-input-row">
+            <input type="text" id="todoInput" placeholder="Neue Aufgabe..." onkeydown="if(event.key==='Enter') addTodo()">
+            <select id="todoCategory">
+                <option value="video">🎬 Video</option>
+                <option value="social">📱 Social</option>
+                <option value="call">📞 Call</option>
+                <option value="other">📌 Sonstiges</option>
+            </select>
+            <button class="btn btn-primary" onclick="addTodo()">Hinzufügen</button>
+        </div>
+
+        <div id="todoList"></div>
+
+        <div class="todo-progress">
+            <div class="progress-info">
+                <span>Fortschritt</span>
+                <span id="todoCounter">0 / 0</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="todoFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIDEO TRACKER PAGE -->
+    <div class="page" id="page-videos">
+        <div class="page-header">
+            <div class="page-title">Video Tracker</div>
+            <button class="btn btn-primary" onclick="openVideoModal()">+ Neues Video</button>
+        </div>
+
+        <div class="video-stats" id="videoStats"></div>
+
+        <div class="video-filters">
+            <select id="filterClient" onchange="renderVideos()"><option value="">Alle Kunden</option></select>
+            <select id="filterStatus" onchange="renderVideos()">
+                <option value="">Alle Status</option>
+                <option value="Offen">Offen</option>
+                <option value="In Arbeit">In Arbeit</option>
+                <option value="Fertig">Fertig</option>
+                <option value="Geliefert">Geliefert</option>
+            </select>
+            <select id="filterMonth" onchange="renderVideos()"><option value="">Alle Monate</option></select>
+        </div>
+
+        <div class="video-header">
+            <div>Datum</div>
+            <div>Kunde / Projekt</div>
+            <div>Art</div>
+            <div>Anz.</div>
+            <div>Status</div>
+            <div></div>
+        </div>
+
+        <div id="videoList"></div>
+    </div>
+</div>
+
+<!-- VIDEO MODAL -->
+<div class="modal-overlay" id="videoModal">
+    <div class="modal">
+        <h3 id="modalTitle">Neues Video</h3>
+        <div class="modal-field">
+            <label>Datum</label>
+            <input type="date" id="vDate">
+        </div>
+        <div class="modal-field">
+            <label>Kunde</label>
+            <input type="text" id="vClient" placeholder="z.B. Krone Inzlingen">
+        </div>
+        <div class="modal-field">
+            <label>Projekt</label>
+            <input type="text" id="vProject" placeholder="z.B. Instagram Reel">
+        </div>
+        <div class="modal-field">
+            <label>Videoart</label>
+            <select id="vType">
+                <option>Reel</option>
+                <option>YouTube Video</option>
+                <option>YouTube Short</option>
+                <option>Ad</option>
+                <option>Podcast Clip</option>
+                <option>Thumbnail</option>
+                <option>Sonstiges</option>
+            </select>
+        </div>
+        <div class="modal-field">
+            <label>Anzahl</label>
+            <input type="number" id="vCount" value="1" min="1">
+        </div>
+        <div class="modal-field">
+            <label>Status</label>
+            <select id="vStatus">
+                <option>Offen</option>
+                <option>In Arbeit</option>
+                <option>Fertig</option>
+                <option>Geliefert</option>
+            </select>
+        </div>
+        <div class="modal-field">
+            <label>Notiz</label>
+            <textarea id="vNote" placeholder="Optional..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeVideoModal()">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveVideo()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    // === CONFIG ===
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxDWlBx0ByVeQZjwALVxtJk2addKK9TfD56GHpghiJ5Pc4qlYA8Q0J6kGYfKG2OIHnwVQ/exec';
+    const STORAGE_TODOS = 'scalex_todos';
+    const STORAGE_VIDEOS = 'scalex_videos';
+    let editingVideoId = null;
+
+    // === DATA (localStorage as primary, Sheets as sync) ===
+    function getTodos() { return JSON.parse(localStorage.getItem(STORAGE_TODOS) || '[]'); }
+    function saveTodosLocal(todos) { localStorage.setItem(STORAGE_TODOS, JSON.stringify(todos)); }
+    function getVideos() { return JSON.parse(localStorage.getItem(STORAGE_VIDEOS) || '[]'); }
+    function saveVideosLocal(videos) { localStorage.setItem(STORAGE_VIDEOS, JSON.stringify(videos)); }
+
+    // === SYNC ===
+    function setSyncState(state) {
+        const dot = document.getElementById('syncDot');
+        dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '');
+        dot.title = state === 'syncing' ? 'Synchronisiert...' : state === 'error' ? 'Sync fehlgeschlagen' : 'Synchronisiert ✓';
+    }
+
+    async function syncToSheets() {
+        setSyncState('syncing');
+        try {
+            const todos = getTodos().map(t => ({
+                id: String(t.id), datum: t.date, aufgabe: t.text,
+                kategorie: t.category, erledigt: t.done ? 'TRUE' : 'FALSE', erstellt: t.date
+            }));
+            const videos = getVideos().map(v => ({
+                id: String(v.id), datum: v.date, kunde: v.client,
+                projekt: v.project, videoart: v.type, anzahl: v.count,
+                status: v.status, notiz: v.note || ''
+            }));
+
+            const data = encodeURIComponent(JSON.stringify({ todos, videos }));
+            const url = API_URL + '?action=syncAll&data=' + data;
+
+            // Hidden iframe approach - no CORS issues
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+
+            // Wait for iframe to load (= request completed)
+            await new Promise((resolve) => {
+                iframe.onload = resolve;
+                setTimeout(resolve, 8000); // Fallback timeout
+            });
+
+            // Cleanup
+            setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1000);
+
+            setSyncState('ok');
+            showToast('✓ Mit Google Sheets synchronisiert');
+        } catch (e) {
+            setSyncState('error');
+            console.error('Sync error:', e);
+        }
+    }
+
+    // Debounced sync - syncs 2 seconds after last change
+    let syncTimer = null;
+    function scheduleSync() {
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(syncToSheets, 2000);
+    }
+
+    // === NAV ===
+    function switchPage(page) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('page-' + page).classList.add('active');
+        document.querySelectorAll('.nav-tab').forEach(t => {
+            if (t.dataset.page === page) t.classList.add('active');
+        });
+    }
+
+    // === DATE ===
+    const days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+    const months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    const now = new Date();
+    document.getElementById('navDate').textContent = `${days[now.getDay()]}, ${now.getDate()}. ${months[now.getMonth()]}`;
+
+    // === TOAST ===
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // === TO-DO ===
+    function addTodo() {
+        const input = document.getElementById('todoInput');
+        const cat = document.getElementById('todoCategory').value;
+        const text = input.value.trim();
+        if (!text) return;
+
+        const todos = getTodos();
+        todos.push({ id: Date.now(), text, category: cat, done: false, date: new Date().toISOString().split('T')[0] });
+        saveTodosLocal(todos);
+        input.value = '';
+        renderTodos();
+        scheduleSync();
+    }
+
+    function toggleTodo(id) {
+        const todos = getTodos();
+        const t = todos.find(t => t.id === id);
+        if (t) t.done = !t.done;
+        saveTodosLocal(todos);
+        renderTodos();
+        scheduleSync();
+    }
+
+    function deleteTodo(id) {
+        saveTodosLocal(getTodos().filter(t => t.id !== id));
+        renderTodos();
+        scheduleSync();
+    }
+
+    function clearDoneTodos() {
+        saveTodosLocal(getTodos().filter(t => !t.done));
+        renderTodos();
+        scheduleSync();
+    }
+
+    function renderTodos() {
+        const todos = getTodos();
+        const categories = { video: '🎬 Video', social: '📱 Social Media', call: '📞 Calls', other: '📌 Sonstiges' };
+        const tagClasses = { video: 'tag-video', social: 'tag-social', call: 'tag-call', other: 'tag-other' };
+
+        let html = '';
+        for (const [cat, label] of Object.entries(categories)) {
+            const items = todos.filter(t => t.category === cat);
+            if (items.length === 0) continue;
+            html += `<div class="todo-section"><div class="todo-section-title">${label}</div>`;
+            for (const t of items) {
+                html += `
+                    <div class="todo-item ${t.done ? 'done' : ''}" onclick="toggleTodo(${t.id})">
+                        <div class="todo-check"><svg><polyline points="4 11 8 15 16 6"/></svg></div>
+                        <div class="todo-text">${esc(t.text)}</div>
+                        <span class="todo-tag ${tagClasses[cat]}">${cat}</span>
+                        <button class="btn-danger" onclick="event.stopPropagation(); deleteTodo(${t.id})">✕</button>
+                    </div>`;
+            }
+            html += '</div>';
+        }
+
+        document.getElementById('todoList').innerHTML = html;
+        const total = todos.length;
+        const done = todos.filter(t => t.done).length;
+        document.getElementById('todoCounter').textContent = `${done} / ${total}`;
+        document.getElementById('todoFill').style.width = total ? (done / total * 100) + '%' : '0%';
+    }
+
+    // === VIDEO TRACKER ===
+    function openVideoModal(id) {
+        editingVideoId = id || null;
+        document.getElementById('modalTitle').textContent = id ? 'Video bearbeiten' : 'Neues Video';
+
+        if (id) {
+            const v = getVideos().find(v => v.id === id);
+            if (v) {
+                document.getElementById('vDate').value = v.date;
+                document.getElementById('vClient').value = v.client;
+                document.getElementById('vProject').value = v.project;
+                document.getElementById('vType').value = v.type;
+                document.getElementById('vCount').value = v.count;
+                document.getElementById('vStatus').value = v.status;
+                document.getElementById('vNote').value = v.note || '';
+            }
+        } else {
+            document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('vClient').value = '';
+            document.getElementById('vProject').value = '';
+            document.getElementById('vType').value = 'Reel';
+            document.getElementById('vCount').value = 1;
+            document.getElementById('vStatus').value = 'Offen';
+            document.getElementById('vNote').value = '';
+        }
+
+        document.getElementById('videoModal').classList.add('open');
+    }
+
+    function closeVideoModal() {
+        document.getElementById('videoModal').classList.remove('open');
+        editingVideoId = null;
+    }
+
+    function saveVideo() {
+        const video = {
+            id: editingVideoId || Date.now(),
+            date: document.getElementById('vDate').value,
+            client: document.getElementById('vClient').value.trim(),
+            project: document.getElementById('vProject').value.trim(),
+            type: document.getElementById('vType').value,
+            count: parseInt(document.getElementById('vCount').value) || 1,
+            status: document.getElementById('vStatus').value,
+            note: document.getElementById('vNote').value.trim()
+        };
+
+        if (!video.client) return;
+
+        let videos = getVideos();
+        if (editingVideoId) {
+            videos = videos.map(v => v.id === editingVideoId ? video : v);
+        } else {
+            videos.unshift(video);
+        }
+
+        saveVideosLocal(videos);
+        closeVideoModal();
+        renderVideos();
+        scheduleSync();
+    }
+
+    function deleteVideo(id) {
+        if (!confirm('Video löschen?')) return;
+        saveVideosLocal(getVideos().filter(v => v.id !== id));
+        renderVideos();
+        scheduleSync();
+    }
+
+    function cycleStatus(id) {
+        const order = ['Offen', 'In Arbeit', 'Fertig', 'Geliefert'];
+        const videos = getVideos();
+        const v = videos.find(v => v.id === id);
+        if (v) {
+            const idx = order.indexOf(v.status);
+            v.status = order[(idx + 1) % order.length];
+        }
+        saveVideosLocal(videos);
+        renderVideos();
+        scheduleSync();
+    }
+
+    function renderVideos() {
+        let videos = getVideos();
+        const filterClient = document.getElementById('filterClient').value;
+        const filterStatus = document.getElementById('filterStatus').value;
+        const filterMonth = document.getElementById('filterMonth').value;
+
+        const clients = [...new Set(videos.map(v => v.client))].sort();
+        const clientSelect = document.getElementById('filterClient');
+        const cc = clientSelect.value;
+        clientSelect.innerHTML = '<option value="">Alle Kunden</option>' + clients.map(c => `<option ${c===cc?'selected':''}>${esc(c)}</option>`).join('');
+
+        const monthsSet = [...new Set(videos.map(v => v.date?.substring(0,7)).filter(Boolean))].sort().reverse();
+        const monthSelect = document.getElementById('filterMonth');
+        const cm = monthSelect.value;
+        monthSelect.innerHTML = '<option value="">Alle Monate</option>' + monthsSet.map(m => `<option ${m===cm?'selected':''}>${m}</option>`).join('');
+
+        if (filterClient) videos = videos.filter(v => v.client === filterClient);
+        if (filterStatus) videos = videos.filter(v => v.status === filterStatus);
+        if (filterMonth) videos = videos.filter(v => v.date?.startsWith(filterMonth));
+
+        const allVideos = getVideos();
+        const thisMonth = new Date().toISOString().substring(0,7);
+        const monthVideos = allVideos.filter(v => v.date?.startsWith(thisMonth));
+        const totalCount = monthVideos.reduce((s,v) => s + (v.count || 0), 0);
+        const openCount = allVideos.filter(v => v.status === 'Offen' || v.status === 'In Arbeit').length;
+
+        document.getElementById('videoStats').innerHTML = `
+            <div class="video-stat"><div class="num">${totalCount}</div><div class="lbl">Videos diesen Monat</div></div>
+            <div class="video-stat"><div class="num">${openCount}</div><div class="lbl">Offen / In Arbeit</div></div>
+            <div class="video-stat"><div class="num">${clients.length}</div><div class="lbl">Aktive Kunden</div></div>
+        `;
+
+        const statusClass = { 'Offen': 'status-offen', 'In Arbeit': 'status-in-arbeit', 'Fertig': 'status-fertig', 'Geliefert': 'status-geliefert' };
+
+        let html = '';
+        for (const v of videos) {
+            const d = v.date ? v.date.split('-') : ['','',''];
+            const dateStr = `${d[2]}.${d[1]}`;
+            html += `
+                <div class="video-card">
+                    <div class="video-date">${dateStr}</div>
+                    <div>
+                        <div class="video-client">${esc(v.client)}</div>
+                        <div class="video-project">${esc(v.project || '')}</div>
+                    </div>
+                    <div style="color:#888;">${esc(v.type || '')}</div>
+                    <div style="text-align:center; color:#fff; font-weight:600;">${v.count || 1}</div>
+                    <div class="video-status ${statusClass[v.status] || ''}" onclick="event.stopPropagation(); cycleStatus(${v.id})" title="Klick = nächster Status">${v.status}</div>
+                    <div style="display:flex; gap:2px;">
+                        <button class="btn-danger" onclick="openVideoModal(${v.id})" title="Bearbeiten">✎</button>
+                        <button class="btn-danger" onclick="deleteVideo(${v.id})" title="Löschen">✕</button>
+                    </div>
+                </div>`;
+        }
+
+        if (!videos.length) {
+            html = '<div style="text-align:center; color:#444; padding:40px; font-size:0.9rem;">Noch keine Videos eingetragen</div>';
+        }
+
+        document.getElementById('videoList').innerHTML = html;
+    }
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    document.getElementById('videoModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('videoModal')) closeVideoModal();
+    });
+
+    // === EXPORT/SYNC ===
+    function exportData() {
+        const data = {
+            exportDate: new Date().toISOString(),
+            todos: getTodos(),
+            videos: getVideos()
+        };
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'scalex-sync.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('✓ Daten exportiert — Jarvis kann jetzt syncen');
+        setSyncState('ok');
+    }
+
+    // Also save to a fixed file path for Jarvis to read directly
+    function autoSave() {
+        const data = { todos: getTodos(), videos: getVideos(), lastSave: new Date().toISOString() };
+        localStorage.setItem('scalex_sync', JSON.stringify(data));
+    }
+
+    // Patch save functions to auto-save
+    const origSaveTodos = saveTodosLocal;
+    saveTodosLocal = function(t) { origSaveTodos(t); autoSave(); };
+    const origSaveVideos = saveVideosLocal;
+    saveVideosLocal = function(v) { origSaveVideos(v); autoSave(); };
+
+    // === INIT ===
+    renderTodos();
+    renderVideos();
+    autoSave();
+    setSyncState('ok');
+</script>
+
+</body>
+</html>
