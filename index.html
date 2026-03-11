@@ -433,26 +433,41 @@
             const data = encodeURIComponent(JSON.stringify({ todos, videos }));
             const url = API_URL + '?action=syncAll&data=' + data;
 
-            // Hidden iframe approach - no CORS issues
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            document.body.appendChild(iframe);
+            const resp = await fetch(url, { redirect: 'follow' });
+            const result = await resp.json();
 
-            // Wait for iframe to load (= request completed)
-            await new Promise((resolve) => {
-                iframe.onload = resolve;
-                setTimeout(resolve, 8000); // Fallback timeout
-            });
-
-            // Cleanup
-            setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1000);
-
-            setSyncState('ok');
-            showToast('✓ Mit Google Sheets synchronisiert');
+            if (result.ok) {
+                setSyncState('ok');
+                showToast('✓ Mit Google Sheets synchronisiert');
+            } else {
+                throw new Error('Sync failed');
+            }
         } catch (e) {
-            setSyncState('error');
-            console.error('Sync error:', e);
+            console.log('Direct sync failed, trying fallback...', e);
+            // Fallback: iframe approach for local file://
+            try {
+                const todos = getTodos().map(t => ({
+                    id: String(t.id), datum: t.date, aufgabe: t.text,
+                    kategorie: t.category, erledigt: t.done ? 'TRUE' : 'FALSE', erstellt: t.date
+                }));
+                const videos = getVideos().map(v => ({
+                    id: String(v.id), datum: v.date, kunde: v.client,
+                    projekt: v.project, videoart: v.type, anzahl: v.count,
+                    status: v.status, notiz: v.note || ''
+                }));
+                const data = encodeURIComponent(JSON.stringify({ todos, videos }));
+                const url = API_URL + '?action=syncAll&data=' + data;
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+                await new Promise(r => { iframe.onload = r; setTimeout(r, 8000); });
+                setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1000);
+                setSyncState('ok');
+                showToast('✓ Synchronisiert');
+            } catch (e2) {
+                setSyncState('error');
+            }
         }
     }
 
