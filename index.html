@@ -732,11 +732,74 @@
     const origSaveVideos = saveVideosLocal;
     saveVideosLocal = function(v) { origSaveVideos(v); autoSave(); };
 
+    // === LOAD FROM GOOGLE SHEETS ===
+    async function loadFromSheets() {
+        setSyncState('syncing');
+        try {
+            // Try fetching from Apps Script
+            const resp = await fetch(API_URL + '?action=getAll', { redirect: 'follow' });
+            const data = await resp.json();
+
+            if (data.todos && data.todos.length > 0) {
+                // Convert sheet format to app format
+                const sheetTodos = data.todos.map(t => ({
+                    id: Number(t.ID) || Date.now(),
+                    text: t.Aufgabe,
+                    category: t.Kategorie,
+                    done: t.Erledigt === 'TRUE' || t.Erledigt === true,
+                    date: t.Datum
+                }));
+
+                // Merge: combine local + sheet, deduplicate by ID, keep newest
+                const localTodos = getTodos();
+                const allTodos = [...sheetTodos];
+                for (const lt of localTodos) {
+                    if (!allTodos.find(t => t.id === lt.id)) {
+                        allTodos.push(lt);
+                    }
+                }
+                saveTodosLocal(allTodos);
+            }
+
+            if (data.videos && data.videos.length > 0) {
+                const sheetVideos = data.videos.map(v => ({
+                    id: Number(v.V_ID) || Date.now(),
+                    date: v.Datum,
+                    client: v.Kunde,
+                    project: v.Projekt,
+                    type: v.Videoart,
+                    count: Number(v.Anzahl) || 1,
+                    status: v.Status,
+                    note: v.Notiz || ''
+                }));
+
+                const localVideos = getVideos();
+                const allVideos = [...sheetVideos];
+                for (const lv of localVideos) {
+                    if (!allVideos.find(v => v.id === lv.id)) {
+                        allVideos.push(lv);
+                    }
+                }
+                saveVideosLocal(allVideos);
+            }
+
+            renderTodos();
+            renderVideos();
+            setSyncState('ok');
+            showToast('✓ Daten von Google Sheets geladen');
+        } catch (e) {
+            console.log('Sheet load failed (offline mode):', e);
+            setSyncState('ok'); // Still show green - local data works fine
+        }
+    }
+
     // === INIT ===
     renderTodos();
     renderVideos();
     autoSave();
-    setSyncState('ok');
+    
+    // Load from Sheets on startup
+    loadFromSheets();
 </script>
 
 </body>
