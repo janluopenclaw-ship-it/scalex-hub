@@ -468,9 +468,12 @@
         }
     }
 
-    // No auto-sync to sheets (Jarvis handles that)
+    // Debounced sync - saves locally + syncs to sheets after 2s
+    let syncTimer = null;
     function scheduleSync() {
         autoSave();
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(syncToSheets, 2000);
     }
 
     // === NAV ===
