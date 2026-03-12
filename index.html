@@ -900,7 +900,7 @@
                     text: t.Aufgabe,
                     category: t.Kategorie,
                     done: t.Erledigt === 'TRUE' || t.Erledigt === true,
-                    date: t.Datum
+                    date: String(t.Datum || '').substring(0,10)
                 }));
 
                 // Merge: combine local + sheet, deduplicate by ID, keep newest
@@ -917,7 +917,7 @@
             if (data.videos && data.videos.length > 0) {
                 const sheetVideos = data.videos.map(v => ({
                     id: Number(v.V_ID) || Date.now(),
-                    date: v.Datum,
+                    date: String(v.Datum || '').substring(0,10),
                     client: v.Kunde,
                     project: v.Projekt,
                     type: v.Videoart,
