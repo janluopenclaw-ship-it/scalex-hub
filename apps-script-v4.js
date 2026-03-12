@@ -12,7 +12,7 @@ function doGet(e) {
   if (action === 'getAll') {
     result = {
       todos: readRange(sheet, 1, 6),
-      videos: readRange(sheet, 8, 16)
+      videos: readRange(sheet, 8, 18)
     };
   }
   
@@ -34,15 +34,15 @@ function doGet(e) {
     
     var videoLastRow = getLastRowInCol(sheet, 8);
     if (videoLastRow > 1) {
-      sheet.getRange(2, 8, videoLastRow - 1, 9).clearContent();
+      sheet.getRange(2, 8, videoLastRow - 1, 11).clearContent();
     }
     if (data.videos && data.videos.length > 0) {
       var videoRows = [];
       for (var j = 0; j < data.videos.length; j++) {
         var v = data.videos[j];
-        videoRows.push([v.id, v.datum, v.kunde, v.projekt, v.videoart, v.anzahl, v.betrag || 0, v.status, v.notiz]);
+        videoRows.push([v.id, v.datum, v.kunde, v.projekt, v.videoart, v.anzahl, v.geliefert || 0, v.betrag || 0, v.status, v.quelle || 'Freelance', v.notiz]);
       }
-      sheet.getRange(2, 8, videoRows.length, 9).setValues(videoRows);
+      sheet.getRange(2, 8, videoRows.length, 11).setValues(videoRows);
     }
     
     result = { ok: true };

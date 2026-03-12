@@ -467,7 +467,7 @@
             <div>Datum</div>
             <div>Kunde / Projekt</div>
             <div>Art</div>
-            <div>Anz.</div>
+            <div>Fortschritt</div>
             <div>Betrag</div>
             <div>Status</div>
             <div></div>
@@ -494,6 +494,13 @@
             <input type="text" id="vProject" placeholder="z.B. Instagram Reel">
         </div>
         <div class="modal-field">
+            <label>Quelle</label>
+            <select id="vSource">
+                <option>Freelance</option>
+                <option>ScaleX</option>
+            </select>
+        </div>
+        <div class="modal-field">
             <label>Leistungsart</label>
             <select id="vType">
                 <option>Reel</option>
@@ -513,6 +520,10 @@
         <div class="modal-field">
             <label>Anzahl</label>
             <input type="number" id="vCount" value="1" min="1">
+        </div>
+        <div class="modal-field">
+            <label>Geliefert</label>
+            <input type="number" id="vDelivered" value="0" min="0" placeholder="z.B. 12 von 30">
         </div>
         <div class="modal-field">
             <label>Betrag (€)</label>
@@ -594,7 +605,8 @@
             const videos = getVideos().map(v => ({
                 id: String(v.id), datum: v.date, kunde: v.client,
                 projekt: v.project, videoart: v.type, anzahl: v.count,
-                betrag: v.betrag || 0, status: v.status, notiz: v.note || ''
+                geliefert: v.delivered || 0, betrag: v.betrag || 0,
+                status: v.status, quelle: v.source || 'Freelance', notiz: v.note || ''
             }));
 
             const data = encodeURIComponent(JSON.stringify({ todos, videos }));
@@ -718,20 +730,24 @@
             const v = getVideos().find(v => v.id === id);
             if (v) {
                 document.getElementById('vDate').value = v.date;
+                document.getElementById('vSource').value = v.source || 'Freelance';
                 document.getElementById('vClient').value = v.client;
                 document.getElementById('vProject').value = v.project;
                 document.getElementById('vType').value = v.type;
                 document.getElementById('vCount').value = v.count;
+                document.getElementById('vDelivered').value = v.delivered || 0;
                 document.getElementById('vBetrag').value = v.betrag || 0;
                 document.getElementById('vStatus').value = v.status;
                 document.getElementById('vNote').value = v.note || '';
             }
         } else {
             document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('vSource').value = 'Freelance';
             document.getElementById('vClient').value = '';
             document.getElementById('vProject').value = '';
             document.getElementById('vType').value = 'Reel';
             document.getElementById('vCount').value = 1;
+            document.getElementById('vDelivered').value = 0;
             document.getElementById('vBetrag').value = 0;
             document.getElementById('vStatus').value = 'Offen';
             document.getElementById('vNote').value = '';
@@ -749,10 +765,12 @@
         const video = {
             id: editingVideoId || Date.now(),
             date: document.getElementById('vDate').value,
+            source: document.getElementById('vSource').value,
             client: document.getElementById('vClient').value.trim(),
             project: document.getElementById('vProject').value.trim(),
             type: document.getElementById('vType').value,
             count: parseInt(document.getElementById('vCount').value) || 1,
+            delivered: parseInt(document.getElementById('vDelivered').value) || 0,
             betrag: parseFloat(document.getElementById('vBetrag').value) || 0,
             status: document.getElementById('vStatus').value,
             note: document.getElementById('vNote').value.trim()
@@ -816,20 +834,22 @@
         const allVideos = getVideos();
         const thisMonth = new Date().toISOString().substring(0,7);
         const monthVideos = allVideos.filter(v => v.date?.startsWith(thisMonth));
-        const monthRevenue = monthVideos.reduce((s,v) => s + (v.betrag || 0), 0);
+        const freelanceRev = monthVideos.filter(v => (v.source || 'Freelance') === 'Freelance').reduce((s,v) => s + (v.betrag || 0), 0);
+        const scalexRev = monthVideos.filter(v => v.source === 'ScaleX').reduce((s,v) => s + (v.betrag || 0), 0);
+        const totalRev = freelanceRev + scalexRev;
         const openRevenue = allVideos.filter(v => v.status !== 'Abgerechnet').reduce((s,v) => s + (v.betrag || 0), 0);
-        const openCount = allVideos.filter(v => v.status === 'Offen' || v.status === 'In Arbeit').length;
 
         const fmt = n => n.toLocaleString('de-DE', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 
         document.getElementById('videoStats').innerHTML = `
-            <div class="video-stat"><div class="num">${fmt(monthRevenue)}€</div><div class="lbl">Umsatz diesen Monat</div></div>
-            <div class="video-stat"><div class="num">${fmt(openRevenue)}€</div><div class="lbl">Offen / nicht abgerechnet</div></div>
-            <div class="video-stat"><div class="num">${openCount}</div><div class="lbl">In Bearbeitung</div></div>
-            <div class="video-stat"><div class="num">${clients.length}</div><div class="lbl">Kunden</div></div>
+            <div class="video-stat"><div class="num">${fmt(totalRev)}€</div><div class="lbl">Gesamt diesen Monat</div></div>
+            <div class="video-stat"><div class="num">${fmt(freelanceRev)}€</div><div class="lbl">Freelance</div></div>
+            <div class="video-stat"><div class="num">${fmt(scalexRev)}€</div><div class="lbl">ScaleX</div></div>
+            <div class="video-stat"><div class="num">${fmt(openRevenue)}€</div><div class="lbl">Offen</div></div>
         `;
 
         const statusClass = { 'Offen': 'status-offen', 'In Arbeit': 'status-in-arbeit', 'Fertig': 'status-fertig', 'Geliefert': 'status-geliefert', 'Abgerechnet': 'status-abgerechnet' };
+        const srcBadge = s => s === 'ScaleX' ? '<span style="font-size:0.5rem;padding:2px 5px;border-radius:3px;background:rgba(255,107,0,0.15);color:var(--accent-light);font-family:Orbitron,monospace;letter-spacing:0.5px;margin-left:6px;">SX</span>' : '<span style="font-size:0.5rem;padding:2px 5px;border-radius:3px;background:rgba(96,165,250,0.12);color:#60a5fa;font-family:Orbitron,monospace;letter-spacing:0.5px;margin-left:6px;">FL</span>';
 
         let html = '';
         for (const v of videos) {
@@ -837,15 +857,22 @@
             const dateStr = `${d[2]}.${d[1]}`;
             const betragStr = (v.betrag || 0) > 0 ? `${v.betrag.toLocaleString('de-DE')}€` : '–';
             const betragClass = (v.betrag || 0) > 0 ? 'betrag' : 'betrag betrag-zero';
+            const delivered = v.delivered || 0;
+            const total = v.count || 1;
+            const progressStr = `${delivered}/${total}`;
+            const progressPct = total > 0 ? Math.round(delivered / total * 100) : 0;
             html += `
                 <div class="video-card">
                     <div class="video-date">${dateStr}</div>
                     <div>
-                        <div class="video-client">${esc(v.client)}</div>
+                        <div class="video-client">${esc(v.client)}${srcBadge(v.source || 'Freelance')}</div>
                         <div class="video-project">${esc(v.project || '')}</div>
                     </div>
                     <div style="color:var(--text-secondary);">${esc(v.type || '')}</div>
-                    <div style="text-align:center; color:var(--text-primary); font-weight:600;">${v.count || 1}</div>
+                    <div style="text-align:center;">
+                        <div style="color:var(--text-primary);font-weight:600;font-size:0.85rem;">${progressStr}</div>
+                        <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div></div>
+                    </div>
                     <div class="${betragClass}">${betragStr}</div>
                     <div class="video-status ${statusClass[v.status] || ''}" onclick="event.stopPropagation(); cycleStatus(${v.id})" title="Klick = nächster Status">${v.status}</div>
                     <div style="display:flex; gap:2px;">
@@ -922,8 +949,10 @@
                     project: v.Projekt,
                     type: v.Videoart,
                     count: Number(v.Anzahl) || 1,
+                    delivered: Number(v.Geliefert) || 0,
                     betrag: Number(v.Betrag) || 0,
                     status: v.Status,
+                    source: v.Quelle || 'Freelance',
                     note: v.Notiz || ''
                 }));
 
