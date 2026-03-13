@@ -266,16 +266,16 @@
         .video-card {
             background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
             padding: 16px 20px; margin-bottom: 8px;
-            display: grid; grid-template-columns: 55px 1fr 85px 55px 65px 90px 45px;
-            align-items: center; gap: 8px; font-size: 0.85rem;
+            display: grid; grid-template-columns: 55px 1.2fr 0.7fr 70px 80px 95px 50px;
+            align-items: center; gap: 16px; font-size: 0.85rem;
             transition: all 0.2s;
         }
 
         .video-card:hover { border-color: rgba(255,107,0,0.3); box-shadow: 0 0 12px rgba(255,107,0,0.08); }
 
         .video-header {
-            display: grid; grid-template-columns: 55px 1fr 85px 55px 65px 90px 45px;
-            gap: 8px; padding: 0 20px 10px; font-size: 0.55rem;
+            display: grid; grid-template-columns: 55px 1.2fr 0.7fr 70px 80px 95px 50px;
+            gap: 16px; padding: 0 20px 10px; font-size: 0.55rem;
             font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--accent);
             font-family: 'Orbitron', monospace; opacity: 0.6;
         }
@@ -517,10 +517,14 @@
 
         <!-- Detail view (hidden by default) -->
         <div id="scalexDetail" style="display:none;">
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
                 <button class="btn btn-ghost" onclick="closeScalexDetail()">← Zurück</button>
                 <div class="page-title" id="scalexDetailTitle" style="font-size:1rem;"></div>
-                <button class="btn btn-primary" onclick="openVideoModal('ScaleX')" style="margin-left:auto;">+ Leistung hinzufügen</button>
+                <div style="margin-left:auto; display:flex; gap:8px;">
+                    <button class="btn btn-primary" onclick="quickAddScalexEntry('YouTube Video')" title="YouTube Video hinzufügen">+ YT Video</button>
+                    <button class="btn btn-primary" onclick="quickAddScalexEntry('Reel')" title="Reel hinzufügen">+ Reel</button>
+                    <button class="btn btn-primary" onclick="openVideoModal('ScaleX')" title="Andere Leistung">+ Andere</button>
+                </div>
             </div>
 
             <div class="video-header">
@@ -998,6 +1002,19 @@
         document.getElementById('scalexDetail').style.display = 'block';
         document.getElementById('scalexDetailTitle').textContent = client;
         renderScalexDetail(client);
+    }
+
+    function quickAddScalexEntry(type) {
+        if (!activeScalexClient) return;
+        var v = getVideos();
+        var n = new Date().toISOString().split('T')[0];
+        var existing = v.filter(e => e.source === 'ScaleX' && e.client === activeScalexClient && e.type === type);
+        var lastPrice = existing.length > 0 ? (existing[existing.length - 1].unitPrice || 0) : 0;
+        v.push({id: Date.now(), date: n, client: activeScalexClient, project: '', type: type, count: 1, delivered: 0, unitPrice: lastPrice, betrag: lastPrice, status: 'Offen', source: 'ScaleX', note: ''});
+        localStorage.setItem('scalex_videos', JSON.stringify(v));
+        renderVideos();
+        scheduleSync();
+        showToast(type + ' hinzugefügt');
     }
 
     function closeScalexDetail() {
