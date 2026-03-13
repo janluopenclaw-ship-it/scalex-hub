@@ -1004,6 +1004,17 @@
         renderScalexDetail(client);
     }
 
+    function decrementDelivered(id) {
+        var videos = getVideos();
+        var v = videos.find(e => e.id === id);
+        if (!v || (v.delivered || 0) <= 0) return;
+        v.delivered = (v.delivered || 0) - 1;
+        localStorage.setItem('scalex_videos', JSON.stringify(videos));
+        renderVideos();
+        scheduleSync();
+        showToast(v.client + ': ' + v.delivered + '/' + (v.count || 1) + ' ' + (v.type || ''));
+    }
+
     function incrementDelivered(id) {
         var videos = getVideos();
         var v = videos.find(e => e.id === id);
@@ -1154,6 +1165,7 @@
                             <div style="color:var(--text-primary);font-weight:600;font-size:0.85rem;">${progressStr}</div>
                             <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div></div>
                         </div>
+                        <button onclick="event.stopPropagation();decrementDelivered(${v.id})" title="-1 geliefert" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.15s;flex-shrink:0;">−</button>
                         <button onclick="event.stopPropagation();incrementDelivered(${v.id})" title="+1 geliefert" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--accent-dim);background:transparent;color:var(--accent);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.15s;flex-shrink:0;">+</button>
                     </div>
                     <div class="${betragClass}">${betragStr}</div>
