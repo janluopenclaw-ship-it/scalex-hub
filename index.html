@@ -266,7 +266,7 @@
         .video-card {
             background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
             padding: 16px 24px; margin-bottom: 8px;
-            display: grid; grid-template-columns: 50px 1.4fr 0.5fr 120px 30px 80px 95px 50px;
+            display: grid; grid-template-columns: 50px 1.4fr 0.4fr 40px 120px 30px 80px 95px 50px;
             align-items: center; gap: 20px; font-size: 0.85rem;
             transition: all 0.2s;
         }
@@ -274,7 +274,7 @@
         .video-card:hover { border-color: rgba(255,107,0,0.3); box-shadow: 0 0 12px rgba(255,107,0,0.08); }
 
         .video-header {
-            display: grid; grid-template-columns: 50px 1.4fr 0.5fr 120px 30px 80px 95px 50px;
+            display: grid; grid-template-columns: 50px 1.4fr 0.4fr 40px 120px 30px 80px 95px 50px;
             gap: 20px; padding: 0 24px 10px; font-size: 0.55rem;
             font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--accent);
             font-family: 'Orbitron', monospace; opacity: 0.6;
@@ -494,6 +494,7 @@
             <div>Datum</div>
             <div>Kunde / Projekt</div>
             <div>Art</div>
+            <div></div>
             <div>Fortschritt</div>
             <div></div>
             <div>Betrag</div>
@@ -532,6 +533,7 @@
                 <div>Datum</div>
                 <div>Projekt</div>
                 <div>Art</div>
+                <div></div>
                 <div>Fortschritt</div>
                 <div></div>
                 <div>Betrag</div>
@@ -1069,6 +1071,7 @@
                         <div class="video-client">${esc(v.project || v.type || '')}</div>
                     </div>
                     <div style="color:var(--text-secondary);">${esc(v.type || '')}</div>
+                    <div></div>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <button onclick="event.stopPropagation();decrementDelivered(${v.id})" title="-1 geliefert" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.15s;flex-shrink:0;">−</button>
                         <div style="text-align:center;flex:1;">
@@ -1164,6 +1167,7 @@
                         <div class="video-project">${esc(v.project || '')}</div>
                     </div>
                     <div style="color:var(--text-secondary);">${esc(v.type || '')}</div>
+                    <div></div>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <button onclick="event.stopPropagation();decrementDelivered(${v.id})" title="-1 geliefert" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.15s;flex-shrink:0;">−</button>
                         <div style="text-align:center;flex:1;">
