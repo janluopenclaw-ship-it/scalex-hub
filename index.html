@@ -397,7 +397,8 @@
     <div class="nav-brand">◈ SCALEX HUB</div>
     <div class="nav-tabs">
         <button class="nav-tab active" data-page="todo" onclick="switchPage('todo')">📋 To-Do</button>
-        <button class="nav-tab" data-page="videos" onclick="switchPage('videos')">💼 Leistungen</button>
+        <button class="nav-tab" data-page="freelance" onclick="switchPage('freelance')">💼 Freelance</button>
+        <button class="nav-tab" data-page="scalex" onclick="switchPage('scalex')">🚀 ScaleX</button>
     </div>
     <div class="nav-right">
         <div class="sync-dot" id="syncDot" title="Sync Status"></div>
@@ -441,18 +442,18 @@
         </div>
     </div>
 
-    <!-- VIDEO TRACKER PAGE -->
-    <div class="page" id="page-videos">
+    <!-- FREELANCE PAGE -->
+    <div class="page" id="page-freelance">
         <div class="page-header">
-            <div class="page-title">Leistungen & Umsatz</div>
-            <button class="btn btn-primary" onclick="openVideoModal()">+ Neue Leistung</button>
+            <div class="page-title">Freelance</div>
+            <button class="btn btn-primary" onclick="openVideoModal('Freelance')">+ Neue Leistung</button>
         </div>
 
-        <div class="video-stats" id="videoStats"></div>
+        <div class="video-stats" id="freelanceStats"></div>
 
         <div class="video-filters">
-            <select id="filterClient" onchange="renderVideos()"><option value="">Alle Kunden</option></select>
-            <select id="filterStatus" onchange="renderVideos()">
+            <select id="flFilterClient" onchange="renderVideos()"><option value="">Alle Kunden</option></select>
+            <select id="flFilterStatus" onchange="renderVideos()">
                 <option value="">Alle Status</option>
                 <option value="Offen">Offen</option>
                 <option value="In Arbeit">In Arbeit</option>
@@ -460,7 +461,7 @@
                 <option value="Geliefert">Geliefert</option>
                 <option value="Abgerechnet">Abgerechnet</option>
             </select>
-            <select id="filterMonth" onchange="renderVideos()"><option value="">Alle Monate</option></select>
+            <select id="flFilterMonth" onchange="renderVideos()"><option value="">Alle Monate</option></select>
         </div>
 
         <div class="video-header">
@@ -473,7 +474,42 @@
             <div></div>
         </div>
 
-        <div id="videoList"></div>
+        <div id="freelanceList"></div>
+    </div>
+
+    <!-- SCALEX PAGE -->
+    <div class="page" id="page-scalex">
+        <div class="page-header">
+            <div class="page-title">ScaleX Media</div>
+            <button class="btn btn-primary" onclick="openVideoModal('ScaleX')">+ Neue Leistung</button>
+        </div>
+
+        <div class="video-stats" id="scalexStats"></div>
+
+        <div class="video-filters">
+            <select id="sxFilterClient" onchange="renderVideos()"><option value="">Alle Kunden</option></select>
+            <select id="sxFilterStatus" onchange="renderVideos()">
+                <option value="">Alle Status</option>
+                <option value="Offen">Offen</option>
+                <option value="In Arbeit">In Arbeit</option>
+                <option value="Fertig">Fertig</option>
+                <option value="Geliefert">Geliefert</option>
+                <option value="Abgerechnet">Abgerechnet</option>
+            </select>
+            <select id="sxFilterMonth" onchange="renderVideos()"><option value="">Alle Monate</option></select>
+        </div>
+
+        <div class="video-header">
+            <div>Datum</div>
+            <div>Kunde / Projekt</div>
+            <div>Art</div>
+            <div>Fortschritt</div>
+            <div>Betrag</div>
+            <div>Status</div>
+            <div></div>
+        </div>
+
+        <div id="scalexList"></div>
     </div>
 </div>
 
@@ -493,13 +529,7 @@
             <label>Projekt</label>
             <input type="text" id="vProject" placeholder="z.B. Instagram Reel">
         </div>
-        <div class="modal-field">
-            <label>Quelle</label>
-            <select id="vSource">
-                <option>Freelance</option>
-                <option>ScaleX</option>
-            </select>
-        </div>
+        <input type="hidden" id="vSource" value="Freelance">
         <div class="modal-field">
             <label>Leistungsart</label>
             <select id="vType">
@@ -724,12 +754,16 @@
     }
 
     // === VIDEO TRACKER ===
-    function openVideoModal(id) {
-        editingVideoId = id || null;
-        document.getElementById('modalTitle').textContent = id ? 'Leistung bearbeiten' : 'Neue Leistung';
+    function openVideoModal(sourceOrId) {
+        // If it's a number, it's an ID for editing; if string, it's the source for new entry
+        const isEdit = typeof sourceOrId === 'number';
+        editingVideoId = isEdit ? sourceOrId : null;
+        const editSource = isEdit ? (getVideos().find(v => v.id === sourceOrId)?.source || 'Freelance') : (sourceOrId || 'Freelance');
+        
+        document.getElementById('modalTitle').textContent = isEdit ? 'Leistung bearbeiten' : 'Neue Leistung';
 
-        if (id) {
-            const v = getVideos().find(v => v.id === id);
+        if (isEdit) {
+            const v = getVideos().find(v => v.id === sourceOrId);
             if (v) {
                 document.getElementById('vDate').value = v.date;
                 document.getElementById('vSource').value = v.source || 'Freelance';
@@ -744,13 +778,13 @@
             }
         } else {
             document.getElementById('vDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('vSource').value = 'Freelance';
+            document.getElementById('vSource').value = editSource;
             document.getElementById('vClient').value = '';
             document.getElementById('vProject').value = '';
             document.getElementById('vType').value = 'Reel';
             document.getElementById('vCount').value = 1;
             document.getElementById('vDelivered').value = 0;
-            document.getElementById('vBetrag').value = 0;
+            document.getElementById('vBetrag').value = editSource === 'Freelance' ? 0 : 0;
             document.getElementById('vStatus').value = 'Offen';
             document.getElementById('vNote').value = '';
         }
@@ -842,44 +876,60 @@
     }
 
     function renderVideos() {
-        let videos = getVideos();
-        const filterClient = document.getElementById('filterClient').value;
-        const filterStatus = document.getElementById('filterStatus').value;
-        const filterMonth = document.getElementById('filterMonth').value;
+        renderSourcePage('Freelance', 'freelance');
+        renderSourcePage('ScaleX', 'scalex');
+    }
+
+    function renderSourcePage(source, prefix) {
+        const allVideos = getVideos();
+        let videos = allVideos.filter(v => (v.source || 'Freelance') === source);
+
+        const clientFilterId = prefix === 'freelance' ? 'flFilterClient' : 'sxFilterClient';
+        const statusFilterId = prefix === 'freelance' ? 'flFilterStatus' : 'sxFilterStatus';
+        const monthFilterId = prefix === 'freelance' ? 'flFilterMonth' : 'sxFilterMonth';
+
+        const filterClient = document.getElementById(clientFilterId)?.value || '';
+        const filterStatus = document.getElementById(statusFilterId)?.value || '';
+        const filterMonth = document.getElementById(monthFilterId)?.value || '';
 
         const clients = [...new Set(videos.map(v => v.client))].sort();
-        const clientSelect = document.getElementById('filterClient');
-        const cc = clientSelect.value;
-        clientSelect.innerHTML = '<option value="">Alle Kunden</option>' + clients.map(c => `<option ${c===cc?'selected':''}>${esc(c)}</option>`).join('');
+        const clientSelect = document.getElementById(clientFilterId);
+        if (clientSelect) {
+            const cc = clientSelect.value;
+            clientSelect.innerHTML = '<option value="">Alle Kunden</option>' + clients.map(c => `<option ${c===cc?'selected':''}>${esc(c)}</option>`).join('');
+        }
 
         const monthsSet = [...new Set(videos.map(v => v.date?.substring(0,7)).filter(Boolean))].sort().reverse();
-        const monthSelect = document.getElementById('filterMonth');
-        const cm = monthSelect.value;
-        monthSelect.innerHTML = '<option value="">Alle Monate</option>' + monthsSet.map(m => `<option ${m===cm?'selected':''}>${m}</option>`).join('');
+        const monthSelect = document.getElementById(monthFilterId);
+        if (monthSelect) {
+            const cm = monthSelect.value;
+            monthSelect.innerHTML = '<option value="">Alle Monate</option>' + monthsSet.map(m => `<option ${m===cm?'selected':''}>${m}</option>`).join('');
+        }
 
         if (filterClient) videos = videos.filter(v => v.client === filterClient);
         if (filterStatus) videos = videos.filter(v => v.status === filterStatus);
         if (filterMonth) videos = videos.filter(v => v.date?.startsWith(filterMonth));
 
-        const allVideos = getVideos();
         const thisMonth = new Date().toISOString().substring(0,7);
-        const monthVideos = allVideos.filter(v => v.date?.startsWith(thisMonth));
-        const freelanceRev = monthVideos.filter(v => (v.source || 'Freelance') === 'Freelance').reduce((s,v) => s + (v.betrag || 0), 0);
-        const scalexRev = monthVideos.filter(v => v.source === 'ScaleX').reduce((s,v) => s + (v.betrag || 0), 0);
-        const totalRev = freelanceRev + scalexRev;
-        const openRevenue = allVideos.filter(v => v.status !== 'Abgerechnet').reduce((s,v) => s + (v.betrag || 0), 0);
+        const sourceAll = allVideos.filter(v => (v.source || 'Freelance') === source);
+        const monthVideos = sourceAll.filter(v => v.date?.startsWith(thisMonth));
+        const monthRev = monthVideos.reduce((s,v) => s + (v.betrag || 0), 0);
+        const openRev = sourceAll.filter(v => v.status !== 'Abgerechnet').reduce((s,v) => s + (v.betrag || 0), 0);
+        const openCount = sourceAll.filter(v => v.status === 'Offen' || v.status === 'In Arbeit').length;
 
         const fmt = n => n.toLocaleString('de-DE', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 
-        document.getElementById('videoStats').innerHTML = `
-            <div class="video-stat"><div class="num">${fmt(totalRev)}€</div><div class="lbl">Gesamt diesen Monat</div></div>
-            <div class="video-stat"><div class="num">${fmt(freelanceRev)}€</div><div class="lbl">Freelance</div></div>
-            <div class="video-stat"><div class="num">${fmt(scalexRev)}€</div><div class="lbl">ScaleX</div></div>
-            <div class="video-stat"><div class="num">${fmt(openRevenue)}€</div><div class="lbl">Offen</div></div>
-        `;
+        const statsEl = document.getElementById(prefix + 'Stats');
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <div class="video-stat"><div class="num">${fmt(monthRev)}€</div><div class="lbl">Umsatz diesen Monat</div></div>
+                <div class="video-stat"><div class="num">${fmt(openRev)}€</div><div class="lbl">Offen</div></div>
+                <div class="video-stat"><div class="num">${openCount}</div><div class="lbl">In Bearbeitung</div></div>
+                <div class="video-stat"><div class="num">${clients.length}</div><div class="lbl">Kunden</div></div>
+            `;
+        }
 
         const statusClass = { 'Offen': 'status-offen', 'In Arbeit': 'status-in-arbeit', 'Fertig': 'status-fertig', 'Geliefert': 'status-geliefert', 'Abgerechnet': 'status-abgerechnet' };
-        const srcBadge = s => s === 'ScaleX' ? '<span style="font-size:0.5rem;padding:2px 5px;border-radius:3px;background:rgba(255,107,0,0.15);color:var(--accent-light);font-family:Orbitron,monospace;letter-spacing:0.5px;margin-left:6px;">SX</span>' : '<span style="font-size:0.5rem;padding:2px 5px;border-radius:3px;background:rgba(96,165,250,0.12);color:#60a5fa;font-family:Orbitron,monospace;letter-spacing:0.5px;margin-left:6px;">FL</span>';
 
         let html = '';
         for (const v of videos) {
@@ -895,7 +945,7 @@
                 <div class="video-card">
                     <div class="video-date">${dateStr}</div>
                     <div>
-                        <div class="video-client">${esc(v.client)}${srcBadge(v.source || 'Freelance')}</div>
+                        <div class="video-client">${esc(v.client)}</div>
                         <div class="video-project">${esc(v.project || '')}</div>
                     </div>
                     <div style="color:var(--text-secondary);">${esc(v.type || '')}</div>
@@ -916,7 +966,8 @@
             html = '<div style="text-align:center; color:var(--text-dim); padding:40px; font-size:0.9rem;">Noch keine Leistungen eingetragen</div>';
         }
 
-        document.getElementById('videoList').innerHTML = html;
+        const listEl = document.getElementById(prefix + 'List');
+        if (listEl) listEl.innerHTML = html;
     }
 
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
