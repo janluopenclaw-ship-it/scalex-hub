@@ -681,7 +681,9 @@
     }
 
     function deleteTodo(id) {
-        saveTodosLocal(getTodos().filter(t => t.id !== id));
+        const todos = getTodos();
+        const deleted = todos.find(t => t.id === id);
+        saveTodosLocal(todos.filter(t => t.id !== id));
         renderTodos();
         scheduleSync();
     }
@@ -791,11 +793,39 @@
         scheduleSync();
     }
 
+    let undoDeleteTimer = null;
+    let undoDeleteData = null;
     function deleteVideo(id) {
-        if (!confirm('Leistung löschen?')) return;
-        saveVideosLocal(getVideos().filter(v => v.id !== id));
+        const videos = getVideos();
+        const deleted = videos.find(v => v.id === id);
+        if (!deleted) return;
+        undoDeleteData = { id, video: deleted };
+        saveVideosLocal(videos.filter(v => v.id !== id));
         renderVideos();
-        scheduleSync();
+        clearTimeout(undoDeleteTimer);
+        showUndoToast('Leistung gelöscht');
+        undoDeleteTimer = setTimeout(() => { undoDeleteData = null; scheduleSync(); }, 5000);
+    }
+
+    function undoDelete() {
+        if (!undoDeleteData) return;
+        const videos = getVideos();
+        videos.push(undoDeleteData.video);
+        saveVideosLocal(videos);
+        undoDeleteData = null;
+        clearTimeout(undoDeleteTimer);
+        renderVideos();
+        hideToast();
+    }
+
+    function showUndoToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerHTML = msg + ' <span onclick="undoDelete()" style="cursor:pointer;text-decoration:underline;margin-left:10px;color:var(--accent);">Rückgängig</span>';
+        t.classList.add('show');
+    }
+
+    function hideToast() {
+        document.getElementById('toast').classList.remove('show');
     }
 
     function cycleStatus(id) {
