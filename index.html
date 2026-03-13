@@ -1004,6 +1004,18 @@
         renderScalexDetail(client);
     }
 
+    function incrementDelivered(id) {
+        var videos = getVideos();
+        var v = videos.find(e => e.id === id);
+        if (!v) return;
+        var max = v.count || 1;
+        v.delivered = Math.min((v.delivered || 0) + 1, max);
+        localStorage.setItem('scalex_videos', JSON.stringify(videos));
+        renderVideos();
+        scheduleSync();
+        showToast(v.client + ': ' + v.delivered + '/' + max + ' ' + (v.type || ''));
+    }
+
     function quickAddScalexEntry(type) {
         if (!activeScalexClient) return;
         var v = getVideos();
@@ -1044,9 +1056,12 @@
                         <div class="video-client">${esc(v.project || v.type || '')}</div>
                     </div>
                     <div style="color:var(--text-secondary);">${esc(v.type || '')}</div>
-                    <div style="text-align:center;">
-                        <div style="color:var(--text-primary);font-weight:600;font-size:0.85rem;">${progressStr}</div>
-                        <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div></div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="text-align:center;flex:1;">
+                            <div style="color:var(--text-primary);font-weight:600;font-size:0.85rem;">${progressStr}</div>
+                            <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div></div>
+                        </div>
+                        <button onclick="event.stopPropagation();incrementDelivered(${v.id})" title="+1 geliefert" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--accent-dim);background:transparent;color:var(--accent);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.15s;flex-shrink:0;">+</button>
                     </div>
                     <div class="${betragClass}">${betragStr}</div>
                     <div class="video-status ${statusClass[v.status] || ''}" onclick="event.stopPropagation(); cycleStatus(${v.id})" title="Klick = nächster Status">${v.status}</div>
@@ -1134,9 +1149,12 @@
                         <div class="video-project">${esc(v.project || '')}</div>
                     </div>
                     <div style="color:var(--text-secondary);">${esc(v.type || '')}</div>
-                    <div style="text-align:center;">
-                        <div style="color:var(--text-primary);font-weight:600;font-size:0.85rem;">${progressStr}</div>
-                        <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div></div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="text-align:center;flex:1;">
+                            <div style="color:var(--text-primary);font-weight:600;font-size:0.85rem;">${progressStr}</div>
+                            <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div></div>
+                        </div>
+                        <button onclick="event.stopPropagation();incrementDelivered(${v.id})" title="+1 geliefert" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--accent-dim);background:transparent;color:var(--accent);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.15s;flex-shrink:0;">+</button>
                     </div>
                     <div class="${betragClass}">${betragStr}</div>
                     <div class="video-status ${statusClass[v.status] || ''}" onclick="event.stopPropagation(); cycleStatus(${v.id})" title="Klick = nächster Status">${v.status}</div>
