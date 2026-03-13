@@ -940,17 +940,18 @@
 
     function renderScalexTiles() {
         const allVideos = getVideos().filter(v => v.source === 'ScaleX');
-        const thisMonth = new Date().toISOString().substring(0,7);
-        const monthVideos = allVideos.filter(v => v.date?.startsWith(thisMonth));
-        const monthRev = monthVideos.reduce((s,v) => s + (v.betrag || 0), 0);
-        const openRev = allVideos.filter(v => v.status !== 'Abgerechnet').reduce((s,v) => s + (v.betrag || 0), 0);
         const clients = [...new Set(allVideos.map(v => v.client))].sort();
         const fmt = n => n.toLocaleString('de-DE', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+
+        const totalRev = allVideos.reduce((s,v) => s + (v.betrag || 0), 0);
+        const deliveredRev = allVideos.reduce((s,v) => s + ((v.delivered || 0) * (v.unitPrice || 0)), 0);
+        const openRev = totalRev - deliveredRev;
 
         const statsEl = document.getElementById('scalexStats');
         if (statsEl) {
             statsEl.innerHTML = `
-                <div class="video-stat"><div class="num">${fmt(monthRev)}€</div><div class="lbl">Umsatz diesen Monat</div></div>
+                <div class="video-stat"><div class="num">${fmt(totalRev)}€</div><div class="lbl">Gesamt</div></div>
+                <div class="video-stat"><div class="num">${fmt(deliveredRev)}€</div><div class="lbl">Geliefert</div></div>
                 <div class="video-stat"><div class="num">${fmt(openRev)}€</div><div class="lbl">Offen</div></div>
                 <div class="video-stat"><div class="num">${clients.length}</div><div class="lbl">Kunden</div></div>
             `;
