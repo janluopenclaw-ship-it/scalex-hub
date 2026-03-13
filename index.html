@@ -266,16 +266,16 @@
         .video-card {
             background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
             padding: 16px 20px; margin-bottom: 8px;
-            display: grid; grid-template-columns: 70px 1fr 100px 50px 80px 90px 50px;
-            align-items: center; gap: 10px; font-size: 0.85rem;
+            display: grid; grid-template-columns: 55px 1fr 85px 55px 65px 90px 45px;
+            align-items: center; gap: 8px; font-size: 0.85rem;
             transition: all 0.2s;
         }
 
         .video-card:hover { border-color: rgba(255,107,0,0.3); box-shadow: 0 0 12px rgba(255,107,0,0.08); }
 
         .video-header {
-            display: grid; grid-template-columns: 70px 1fr 100px 50px 80px 90px 50px;
-            gap: 10px; padding: 0 20px 10px; font-size: 0.6rem;
+            display: grid; grid-template-columns: 55px 1fr 85px 55px 65px 90px 45px;
+            gap: 8px; padding: 0 20px 10px; font-size: 0.55rem;
             font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--accent);
             font-family: 'Orbitron', monospace; opacity: 0.6;
         }
@@ -384,7 +384,7 @@
         .toast.show { opacity: 1; }
 
         @media (max-width: 700px) {
-            .video-card, .video-header { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+            .video-card, .video-header { grid-template-columns: 1fr 1fr; gap: 8px; }
             .video-stats { flex-direction: column; }
             .nav { flex-wrap: wrap; gap: 8px; }
             .todo-input-row { flex-wrap: wrap; }
