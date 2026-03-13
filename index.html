@@ -372,6 +372,32 @@
 
         .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 
+        .client-tile {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+            padding: 20px; cursor: pointer; transition: all 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .client-tile:hover { border-color: var(--accent); box-shadow: 0 0 20px rgba(255,107,0,0.12); transform: translateY(-2px); }
+        .client-tile::before {
+            content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.3;
+        }
+        .client-tile-name {
+            font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700;
+            color: var(--text-primary); margin-bottom: 12px; letter-spacing: 0.5px;
+        }
+        .client-tile-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+        .client-tile-stat {
+            font-size: 0.75rem; color: var(--text-secondary);
+        }
+        .client-tile-stat strong {
+            color: var(--accent); font-family: 'Orbitron', monospace; font-size: 0.9rem; display: block;
+        }
+        .client-tile-total {
+            margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+            font-family: 'Orbitron', monospace; font-size: 0.8rem; color: var(--gold);
+        }
+
         .toast {
             position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
             background: rgba(255,107,0,0.1); border: 1px solid var(--accent); border-radius: 6px;
@@ -486,30 +512,29 @@
 
         <div class="video-stats" id="scalexStats"></div>
 
-        <div class="video-filters">
-            <select id="sxFilterClient" onchange="renderVideos()"><option value="">Alle Kunden</option></select>
-            <select id="sxFilterStatus" onchange="renderVideos()">
-                <option value="">Alle Status</option>
-                <option value="Offen">Offen</option>
-                <option value="In Arbeit">In Arbeit</option>
-                <option value="Fertig">Fertig</option>
-                <option value="Geliefert">Geliefert</option>
-                <option value="Abgerechnet">Abgerechnet</option>
-            </select>
-            <select id="sxFilterMonth" onchange="renderVideos()"><option value="">Alle Monate</option></select>
-        </div>
+        <!-- Client tiles view -->
+        <div id="scalexTiles" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;"></div>
 
-        <div class="video-header">
-            <div>Datum</div>
-            <div>Kunde / Projekt</div>
-            <div>Art</div>
-            <div>Fortschritt</div>
-            <div>Betrag</div>
-            <div>Status</div>
-            <div></div>
-        </div>
+        <!-- Detail view (hidden by default) -->
+        <div id="scalexDetail" style="display:none;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+                <button class="btn btn-ghost" onclick="closeScalexDetail()">← Zurück</button>
+                <div class="page-title" id="scalexDetailTitle" style="font-size:1rem;"></div>
+                <button class="btn btn-primary" onclick="openVideoModal('ScaleX')" style="margin-left:auto;">+ Leistung hinzufügen</button>
+            </div>
 
-        <div id="scalexList"></div>
+            <div class="video-header">
+                <div>Datum</div>
+                <div>Projekt</div>
+                <div>Art</div>
+                <div>Fortschritt</div>
+                <div>Betrag</div>
+                <div>Status</div>
+                <div></div>
+            </div>
+
+            <div id="scalexDetailList"></div>
+        </div>
     </div>
 </div>
 
@@ -875,9 +900,127 @@
         scheduleSync();
     }
 
+    let activeScalexClient = null;
+
     function renderVideos() {
         renderSourcePage('Freelance', 'freelance');
-        renderSourcePage('ScaleX', 'scalex');
+        renderScalexTiles();
+        if (activeScalexClient) renderScalexDetail(activeScalexClient);
+    }
+
+    function renderScalexTiles() {
+        const allVideos = getVideos().filter(v => v.source === 'ScaleX');
+        const thisMonth = new Date().toISOString().substring(0,7);
+        const monthVideos = allVideos.filter(v => v.date?.startsWith(thisMonth));
+        const monthRev = monthVideos.reduce((s,v) => s + (v.betrag || 0), 0);
+        const openRev = allVideos.filter(v => v.status !== 'Abgerechnet').reduce((s,v) => s + (v.betrag || 0), 0);
+        const clients = [...new Set(allVideos.map(v => v.client))].sort();
+        const fmt = n => n.toLocaleString('de-DE', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+
+        const statsEl = document.getElementById('scalexStats');
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <div class="video-stat"><div class="num">${fmt(monthRev)}€</div><div class="lbl">Umsatz diesen Monat</div></div>
+                <div class="video-stat"><div class="num">${fmt(openRev)}€</div><div class="lbl">Offen</div></div>
+                <div class="video-stat"><div class="num">${clients.length}</div><div class="lbl">Kunden</div></div>
+            `;
+        }
+
+        let html = '';
+        for (const client of clients) {
+            const items = allVideos.filter(v => v.client === client);
+            const types = {};
+            for (const item of items) {
+                const t = item.type || 'Sonstiges';
+                if (!types[t]) types[t] = { total: 0, delivered: 0 };
+                types[t].total += (item.count || 1);
+                types[t].delivered += (item.delivered || 0);
+            }
+            const totalBetrag = items.reduce((s,v) => s + (v.betrag || 0), 0);
+
+            let statsHtml = '';
+            for (const [type, data] of Object.entries(types)) {
+                const pct = data.total > 0 ? Math.round(data.delivered / data.total * 100) : 0;
+                statsHtml += `
+                    <div class="client-tile-stat">
+                        <strong>${data.delivered}/${data.total}</strong>
+                        ${esc(type)}
+                        <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;width:60px;">
+                            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div>
+                        </div>
+                    </div>`;
+            }
+
+            html += `
+                <div class="client-tile" onclick="openScalexDetail('${esc(client)}')">
+                    <div class="client-tile-name">${esc(client)}</div>
+                    <div class="client-tile-stats">${statsHtml}</div>
+                    ${totalBetrag > 0 ? `<div class="client-tile-total">${fmt(totalBetrag)}€</div>` : ''}
+                </div>`;
+        }
+
+        if (!clients.length) {
+            html = '<div style="text-align:center; color:var(--text-dim); padding:60px; font-size:0.9rem; grid-column:1/-1;">Noch keine ScaleX Kunden. Klicke "+ Neue Leistung" um einen hinzuzufügen.</div>';
+        }
+
+        const tilesEl = document.getElementById('scalexTiles');
+        if (tilesEl) tilesEl.innerHTML = html;
+    }
+
+    function openScalexDetail(client) {
+        activeScalexClient = client;
+        document.getElementById('scalexTiles').style.display = 'none';
+        document.getElementById('scalexDetail').style.display = 'block';
+        document.getElementById('scalexDetailTitle').textContent = client;
+        renderScalexDetail(client);
+    }
+
+    function closeScalexDetail() {
+        activeScalexClient = null;
+        document.getElementById('scalexTiles').style.display = 'grid';
+        document.getElementById('scalexDetail').style.display = 'none';
+    }
+
+    function renderScalexDetail(client) {
+        const videos = getVideos().filter(v => v.source === 'ScaleX' && v.client === client);
+        const statusClass = { 'Offen': 'status-offen', 'In Arbeit': 'status-in-arbeit', 'Fertig': 'status-fertig', 'Geliefert': 'status-geliefert', 'Abgerechnet': 'status-abgerechnet' };
+
+        let html = '';
+        for (const v of videos) {
+            const d = v.date ? v.date.split('-') : ['','',''];
+            const dateStr = `${d[2]}.${d[1]}`;
+            const betragStr = (v.betrag || 0) > 0 ? `${v.betrag.toLocaleString('de-DE')}€` : '–';
+            const betragClass = (v.betrag || 0) > 0 ? 'betrag' : 'betrag betrag-zero';
+            const delivered = v.delivered || 0;
+            const total = v.count || 1;
+            const progressStr = `${delivered}/${total}`;
+            const progressPct = total > 0 ? Math.round(delivered / total * 100) : 0;
+            html += `
+                <div class="video-card">
+                    <div class="video-date">${dateStr}</div>
+                    <div>
+                        <div class="video-client">${esc(v.project || v.type || '')}</div>
+                    </div>
+                    <div style="color:var(--text-secondary);">${esc(v.type || '')}</div>
+                    <div style="text-align:center;">
+                        <div style="color:var(--text-primary);font-weight:600;font-size:0.85rem;">${progressStr}</div>
+                        <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;"><div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div></div>
+                    </div>
+                    <div class="${betragClass}">${betragStr}</div>
+                    <div class="video-status ${statusClass[v.status] || ''}" onclick="event.stopPropagation(); cycleStatus(${v.id})" title="Klick = nächster Status">${v.status}</div>
+                    <div style="display:flex; gap:2px;">
+                        <button class="btn-danger" onclick="openVideoModal(${v.id})" title="Bearbeiten">✎</button>
+                        <button class="btn-danger" onclick="deleteVideo(${v.id})" title="Löschen">✕</button>
+                    </div>
+                </div>`;
+        }
+
+        if (!videos.length) {
+            html = '<div style="text-align:center; color:var(--text-dim); padding:40px;">Keine Leistungen für diesen Kunden</div>';
+        }
+
+        const listEl = document.getElementById('scalexDetailList');
+        if (listEl) listEl.innerHTML = html;
     }
 
     function renderSourcePage(source, prefix) {
