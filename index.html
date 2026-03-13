@@ -373,8 +373,8 @@
         .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 
         .client-tile {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-            padding: 20px; cursor: pointer; transition: all 0.2s;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 24px; cursor: pointer; transition: all 0.2s;
             position: relative; overflow: hidden;
         }
         .client-tile:hover { border-color: var(--accent); box-shadow: 0 0 20px rgba(255,107,0,0.12); transform: translateY(-2px); }
@@ -383,19 +383,19 @@
             background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.3;
         }
         .client-tile-name {
-            font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700;
-            color: var(--text-primary); margin-bottom: 12px; letter-spacing: 0.5px;
+            font-family: 'Orbitron', monospace; font-size: 1.05rem; font-weight: 700;
+            color: var(--text-primary); margin-bottom: 18px; letter-spacing: 0.5px;
         }
-        .client-tile-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+        .client-tile-stats { display: flex; gap: 24px; flex-wrap: wrap; }
         .client-tile-stat {
-            font-size: 0.75rem; color: var(--text-secondary);
+            font-size: 0.9rem; color: var(--text-secondary); min-width: 80px;
         }
         .client-tile-stat strong {
-            color: var(--accent); font-family: 'Orbitron', monospace; font-size: 0.9rem; display: block;
+            color: var(--accent); font-family: 'Orbitron', monospace; font-size: 1.2rem; display: block; margin-bottom: 2px;
         }
         .client-tile-total {
-            margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
-            font-family: 'Orbitron', monospace; font-size: 0.8rem; color: var(--gold);
+            margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);
+            font-family: 'Orbitron', monospace; font-size: 1.1rem; color: var(--gold);
         }
 
         .toast {
@@ -965,12 +965,12 @@
             let statsHtml = '';
             for (const [type, data] of Object.entries(types)) {
                 const pct = data.total > 0 ? Math.round(data.delivered / data.total * 100) : 0;
-                const priceInfo = data.unitPrice > 0 ? `<div style="font-size:0.65rem;color:var(--text-dim);margin-top:2px;">${data.unitPrice}€/Stk</div>` : '';
+                const priceInfo = data.unitPrice > 0 ? `<div style="font-size:0.8rem;color:var(--text-dim);margin-top:4px;">${data.unitPrice}€/Stk</div>` : '';
                 statsHtml += `
                     <div class="client-tile-stat">
                         <strong>${data.delivered}/${data.total}</strong>
                         ${esc(type)}${priceInfo}
-                        <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;width:60px;">
+                        <div style="height:4px;background:var(--border);border-radius:2px;margin-top:6px;width:80px;">
                             <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div>
                         </div>
                     </div>`;
