@@ -986,7 +986,7 @@
             }
 
             html += `
-                <div class="client-tile" onclick="openScalexDetail('${esc(client)}')">
+                <div class="client-tile" onclick="openScalexDetail(${JSON.stringify(client)})">
                     <div class="client-tile-name">${esc(client)}</div>
                     <div class="client-tile-stats">${statsHtml}</div>
                     ${totalBetrag > 0 ? `<div class="client-tile-total">${fmt(totalBetrag)}€</div>` : ''}
