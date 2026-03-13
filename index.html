@@ -574,16 +574,20 @@
         </div>
         <div class="modal-field">
             <label>Anzahl</label>
-            <input type="number" id="vCount" value="1" min="1">
+            <input type="number" id="vCount" value="1" min="1" oninput="updateBetragPreview()">
         </div>
         <div class="modal-field">
             <label>Geliefert</label>
             <input type="number" id="vDelivered" value="0" min="0" placeholder="z.B. 12 von 30">
         </div>
         <div class="modal-field">
-            <label>Betrag (€)</label>
-            <input type="number" id="vBetrag" value="0" min="0" step="0.01" placeholder="z.B. 250.00">
+            <label id="vPriceLabel">Stückpreis (€)</label>
+            <input type="number" id="vUnitPrice" value="0" min="0" step="0.01" placeholder="z.B. 150.00" oninput="updateBetragPreview()">
         </div>
+        <div id="vBetragPreview" style="font-family:'Orbitron',monospace;font-size:0.8rem;color:var(--gold);margin-bottom:14px;padding-left:2px;display:none;">
+            Gesamt: 0€
+        </div>
+        <input type="hidden" id="vBetrag" value="0">
         <div class="modal-field">
             <label>Status</label>
             <select id="vStatus">
@@ -660,8 +664,9 @@
             const videos = getVideos().map(v => ({
                 id: String(v.id), datum: v.date, kunde: v.client,
                 projekt: v.project, videoart: v.type, anzahl: v.count,
-                geliefert: v.delivered || 0, betrag: v.betrag || 0,
-                status: v.status, quelle: v.source || 'Freelance', notiz: v.note || ''
+                geliefert: v.delivered || 0, stueckpreis: v.unitPrice || 0,
+                betrag: v.betrag || 0, status: v.status,
+                quelle: v.source || 'Freelance', notiz: v.note || ''
             }));
 
             const data = encodeURIComponent(JSON.stringify({ todos, videos }));
@@ -797,6 +802,7 @@
                 document.getElementById('vType').value = v.type;
                 document.getElementById('vCount').value = v.count;
                 document.getElementById('vDelivered').value = v.delivered || 0;
+                document.getElementById('vUnitPrice').value = v.unitPrice || 0;
                 document.getElementById('vBetrag').value = v.betrag || 0;
                 document.getElementById('vStatus').value = v.status;
                 document.getElementById('vNote').value = v.note || '';
@@ -809,12 +815,27 @@
             document.getElementById('vType').value = 'Reel';
             document.getElementById('vCount').value = 1;
             document.getElementById('vDelivered').value = 0;
-            document.getElementById('vBetrag').value = editSource === 'Freelance' ? 0 : 0;
+            document.getElementById('vUnitPrice').value = 0;
+            document.getElementById('vBetrag').value = 0;
             document.getElementById('vStatus').value = 'Offen';
             document.getElementById('vNote').value = '';
         }
+        updateBetragPreview();
 
         document.getElementById('videoModal').classList.add('open');
+    }
+
+    function updateBetragPreview() {
+        const count = parseInt(document.getElementById('vCount').value) || 1;
+        const unitPrice = parseFloat(document.getElementById('vUnitPrice').value) || 0;
+        const total = count * unitPrice;
+        const preview = document.getElementById('vBetragPreview');
+        if (unitPrice > 0 && count > 1) {
+            preview.textContent = `Gesamt: ${count} × ${unitPrice}€ = ${total.toLocaleString('de-DE')}€`;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
     }
 
     function closeVideoModal() {
@@ -832,7 +853,8 @@
             type: document.getElementById('vType').value,
             count: parseInt(document.getElementById('vCount').value) || 1,
             delivered: parseInt(document.getElementById('vDelivered').value) || 0,
-            betrag: parseFloat(document.getElementById('vBetrag').value) || 0,
+            unitPrice: parseFloat(document.getElementById('vUnitPrice').value) || 0,
+            betrag: (parseInt(document.getElementById('vCount').value) || 1) * (parseFloat(document.getElementById('vUnitPrice').value) || 0),
             status: document.getElementById('vStatus').value,
             note: document.getElementById('vNote').value.trim()
         };
@@ -932,19 +954,22 @@
             const types = {};
             for (const item of items) {
                 const t = item.type || 'Sonstiges';
-                if (!types[t]) types[t] = { total: 0, delivered: 0 };
+                if (!types[t]) types[t] = { total: 0, delivered: 0, betrag: 0, unitPrice: 0 };
                 types[t].total += (item.count || 1);
                 types[t].delivered += (item.delivered || 0);
+                types[t].betrag += (item.betrag || 0);
+                if (item.unitPrice) types[t].unitPrice = item.unitPrice;
             }
             const totalBetrag = items.reduce((s,v) => s + (v.betrag || 0), 0);
 
             let statsHtml = '';
             for (const [type, data] of Object.entries(types)) {
                 const pct = data.total > 0 ? Math.round(data.delivered / data.total * 100) : 0;
+                const priceInfo = data.unitPrice > 0 ? `<div style="font-size:0.65rem;color:var(--text-dim);margin-top:2px;">${data.unitPrice}€/Stk</div>` : '';
                 statsHtml += `
                     <div class="client-tile-stat">
                         <strong>${data.delivered}/${data.total}</strong>
-                        ${esc(type)}
+                        ${esc(type)}${priceInfo}
                         <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;width:60px;">
                             <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:2px;"></div>
                         </div>
@@ -1174,6 +1199,7 @@
                     type: v.Videoart,
                     count: Number(v.Anzahl) || 1,
                     delivered: Number(v.Geliefert) || 0,
+                    unitPrice: Number(v.Stueckpreis) || 0,
                     betrag: Number(v.Betrag) || 0,
                     status: v.Status,
                     source: v.Quelle || 'Freelance',
