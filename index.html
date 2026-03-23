@@ -409,6 +409,41 @@
 
         .toast.show { opacity: 1; }
 
+        .todo-filter-tabs {
+            display: flex; gap: 4px; margin-bottom: 16px;
+            background: var(--bg-secondary); border-radius: 8px; padding: 3px;
+            border: 1px solid var(--border); flex-wrap: wrap;
+        }
+
+        .todo-filter-tab {
+            padding: 7px 14px; border-radius: 6px; font-size: 0.75rem;
+            font-weight: 600; color: var(--text-dim); cursor: pointer;
+            transition: all 0.3s; border: none; background: none;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 0.5px; white-space: nowrap;
+        }
+
+        .todo-filter-tab.active {
+            background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255,107,0,0.3);
+        }
+        .todo-filter-tab:hover:not(.active) { color: var(--accent-light); }
+
+        .todo-input-row input[type="date"] {
+            min-width: 130px; max-width: 160px;
+            color-scheme: dark;
+        }
+
+        .todo-due {
+            font-size: 0.75rem; color: var(--text-secondary);
+            margin-left: 4px; white-space: nowrap;
+        }
+
+        .todo-item.overdue {
+            border-left: 3px solid #ef4444;
+        }
+
         @media (max-width: 700px) {
             .video-card, .video-header { grid-template-columns: 1fr 1fr; gap: 8px; }
             .video-stats { flex-direction: column; }
@@ -437,11 +472,20 @@
     <!-- TO-DO PAGE -->
     <div class="page active" id="page-todo">
         <div class="page-header">
-            <div class="page-title">Heutige Aufgaben</div>
+            <div class="page-title" id="todoPageTitle">Alle Aufgaben</div>
             <div style="display:flex; gap:8px;">
                 <button class="btn btn-ghost" onclick="exportData()">☁️ Sync</button>
                 <button class="btn btn-ghost" onclick="clearDoneTodos()">Erledigte löschen</button>
             </div>
+        </div>
+
+        <div class="todo-filter-tabs">
+            <button class="todo-filter-tab active" onclick="setTodoFilter('all')">Alle</button>
+            <button class="todo-filter-tab" onclick="setTodoFilter('today')">Heute</button>
+            <button class="todo-filter-tab" onclick="setTodoFilter('tomorrow')">Morgen</button>
+            <button class="todo-filter-tab" onclick="setTodoFilter('week')">7 Tage</button>
+            <button class="todo-filter-tab" onclick="setTodoFilter('month')">30 Tage</button>
+            <button class="todo-filter-tab" onclick="setTodoFilter('overdue')">Überfällig</button>
         </div>
 
         <div class="todo-input-row">
@@ -452,6 +496,7 @@
                 <option value="call">📞 Call</option>
                 <option value="other">📌 Sonstiges</option>
             </select>
+            <input type="date" id="todoDueDate">
             <button class="btn btn-primary" onclick="addTodo()">Hinzufügen</button>
         </div>
 
@@ -725,16 +770,60 @@
     }
 
     // === TO-DO ===
+    let todoFilter = 'all';
+
+    function setTodoFilter(filter) {
+        todoFilter = filter;
+        document.querySelectorAll('.todo-filter-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.todo-filter-tab').forEach(t => {
+            const filterMap = { 'Alle': 'all', 'Heute': 'today', 'Morgen': 'tomorrow', '7 Tage': 'week', '30 Tage': 'month', 'Überfällig': 'overdue' };
+            if (filterMap[t.textContent] === filter) t.classList.add('active');
+        });
+        const titles = { all: 'Alle Aufgaben', today: 'Heutige Aufgaben', tomorrow: 'Aufgaben für Morgen', week: 'Nächste 7 Tage', month: 'Nächste 30 Tage', overdue: 'Überfällige Aufgaben' };
+        document.getElementById('todoPageTitle').textContent = titles[filter] || 'Alle Aufgaben';
+        renderTodos();
+    }
+
+    function getDateStr(offsetDays) {
+        const d = new Date();
+        d.setHours(0,0,0,0);
+        d.setDate(d.getDate() + offsetDays);
+        return d.toISOString().split('T')[0];
+    }
+
+    function filterTodosByTime(todos) {
+        if (todoFilter === 'all') return todos;
+        const today = getDateStr(0);
+        const tomorrow = getDateStr(1);
+        const in7 = getDateStr(7);
+        const in30 = getDateStr(30);
+
+        return todos.filter(t => {
+            const due = t.dueDate || null;
+            switch(todoFilter) {
+                case 'today': return !due || due === today;
+                case 'tomorrow': return due === tomorrow;
+                case 'week': return !due || (due >= today && due <= in7);
+                case 'month': return !due || (due >= today && due <= in30);
+                case 'overdue': return due && due < today && !t.done;
+                default: return true;
+            }
+        });
+    }
+
     function addTodo() {
         const input = document.getElementById('todoInput');
         const cat = document.getElementById('todoCategory').value;
+        const dueDateInput = document.getElementById('todoDueDate');
         const text = input.value.trim();
         if (!text) return;
 
+        const dueDate = dueDateInput.value || null;
         const todos = getTodos();
-        todos.push({ id: Date.now(), text, category: cat, done: false, date: new Date().toISOString().split('T')[0] });
+        todos.push({ id: Date.now(), text, category: cat, done: false, date: new Date().toISOString().split('T')[0], dueDate });
         saveTodosLocal(todos);
         input.value = '';
+        dueDateInput.value = '';
         renderTodos();
         scheduleSync();
     }
@@ -763,20 +852,30 @@
     }
 
     function renderTodos() {
-        const todos = getTodos();
+        const allTodos = getTodos();
+        const filtered = filterTodosByTime(allTodos);
         const categories = { video: '🎬 Video', social: '📱 Social Media', call: '📞 Calls', other: '📌 Sonstiges' };
         const tagClasses = { video: 'tag-video', social: 'tag-social', call: 'tag-call', other: 'tag-other' };
+        const today = getDateStr(0);
 
         let html = '';
         for (const [cat, label] of Object.entries(categories)) {
-            const items = todos.filter(t => t.category === cat);
+            const items = filtered.filter(t => t.category === cat);
             if (items.length === 0) continue;
             html += `<div class="todo-section"><div class="todo-section-title">${label}</div>`;
             for (const t of items) {
+                const isOverdue = t.dueDate && t.dueDate < today && !t.done;
+                const overdueClass = isOverdue ? ' overdue' : '';
+                let dueHtml = '';
+                if (t.dueDate) {
+                    const dp = t.dueDate.split('-');
+                    dueHtml = `<span class="todo-due">📅 ${dp[2]}.${dp[1]}.</span>`;
+                }
                 html += `
-                    <div class="todo-item ${t.done ? 'done' : ''}" onclick="toggleTodo(${t.id})">
+                    <div class="todo-item ${t.done ? 'done' : ''}${overdueClass}" onclick="toggleTodo(${t.id})">
                         <div class="todo-check"><svg><polyline points="4 11 8 15 16 6"/></svg></div>
                         <div class="todo-text">${esc(t.text)}</div>
+                        ${dueHtml}
                         <span class="todo-tag ${tagClasses[cat]}">${cat}</span>
                         <button class="btn-danger" onclick="event.stopPropagation(); deleteTodo(${t.id})">✕</button>
                     </div>`;
@@ -785,8 +884,8 @@
         }
 
         document.getElementById('todoList').innerHTML = html;
-        const total = todos.length;
-        const done = todos.filter(t => t.done).length;
+        const total = filtered.length;
+        const done = filtered.filter(t => t.done).length;
         document.getElementById('todoCounter').textContent = `${done} / ${total}`;
         document.getElementById('todoFill').style.width = total ? (done / total * 100) + '%' : '0%';
     }
