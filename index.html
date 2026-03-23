@@ -458,6 +458,11 @@
             min-width: 130px; max-width: 160px;
             color-scheme: dark;
         }
+        #todoDuration { max-width: 110px; }
+        .todo-duration {
+            font-size: 0.7rem; color: var(--text-secondary);
+            margin-left: 4px; white-space: nowrap;
+        }
 
         .todo-due {
             font-size: 0.75rem; color: var(--text-secondary);
@@ -473,6 +478,7 @@
             .video-stats { flex-direction: column; }
             .nav { flex-wrap: wrap; gap: 8px; }
             .todo-input-row { flex-wrap: wrap; }
+            #todoDuration { max-width: 90px; }
         }
     </style>
 </head>
@@ -521,7 +527,7 @@
 
         <div class="todo-input-row">
             <input type="text" id="todoInput" placeholder="Neue Aufgabe..." onkeydown="if(event.key==='Enter') addTodo()">
-            <select id="todoCategory">
+            <select id="todoCategory" onchange="updateDurationByCategory()">
                 <option value="video">🎬 Video</option>
                 <option value="social">📱 Social</option>
                 <option value="call">📞 Call</option>
@@ -531,6 +537,15 @@
                 <option value="scalex">🚀 ScaleX</option>
                 <option value="rebland">💼 Rebland</option>
                 <option value="privat">🏠 Privat</option>
+            </select>
+            <select id="todoDuration">
+                <option value="30">⏱️ 30min</option>
+                <option value="60" selected>⏱️ 1h</option>
+                <option value="90">⏱️ 1.5h</option>
+                <option value="120">⏱️ 2h</option>
+                <option value="150">⏱️ 2.5h</option>
+                <option value="180">⏱️ 3h</option>
+                <option value="240">⏱️ 4h</option>
             </select>
             <input type="date" id="todoDueDate">
             <button class="btn btn-primary" onclick="addTodo()">Hinzufügen</button>
@@ -749,7 +764,8 @@
             const todos = getTodos().map(t => ({
                 id: String(t.id), datum: t.date, aufgabe: t.text,
                 kategorie: t.category, erledigt: t.done ? 'TRUE' : 'FALSE', erstellt: t.date,
-                faellig: t.dueDate || '', quelle_todo: t.source || 'scalex'
+                faellig: t.dueDate || '', quelle_todo: t.source || 'scalex',
+                dauer: t.duration || 60
             }));
             const videos = getVideos().map(v => ({
                 id: String(v.id), datum: v.date, kunde: v.client,
@@ -861,20 +877,35 @@
         });
     }
 
+    function formatDuration(mins) {
+        mins = Number(mins) || 60;
+        if (mins < 60) return mins + 'min';
+        const h = mins / 60;
+        return (h % 1 === 0 ? h : h.toFixed(1)) + 'h';
+    }
+
+    function updateDurationByCategory() {
+        const cat = document.getElementById('todoCategory').value;
+        const durMap = { video: '60', social: '30', call: '60', other: '60' };
+        document.getElementById('todoDuration').value = durMap[cat] || '60';
+    }
+
     function addTodo() {
         const input = document.getElementById('todoInput');
         const cat = document.getElementById('todoCategory').value;
         const source = document.getElementById('todoSource').value;
+        const duration = Number(document.getElementById('todoDuration').value) || 60;
         const dueDateInput = document.getElementById('todoDueDate');
         const text = input.value.trim();
         if (!text) return;
 
         const dueDate = dueDateInput.value || null;
         const todos = getTodos();
-        todos.push({ id: Date.now(), text, category: cat, source, done: false, date: new Date().toISOString().split('T')[0], dueDate });
+        todos.push({ id: Date.now(), text, category: cat, source, done: false, date: new Date().toISOString().split('T')[0], dueDate, duration });
         saveTodosLocal(todos);
         input.value = '';
         dueDateInput.value = '';
+        document.getElementById('todoDuration').value = '60';
         renderTodos();
         scheduleSync();
     }
@@ -927,6 +958,7 @@
                     const dp = t.dueDate.split('-');
                     dueHtml = `<span class="todo-due">📅 ${dp[2]}.${dp[1]}.</span>`;
                 }
+                const durHtml = `<span class="todo-duration">⏱️ ${formatDuration(t.duration || 60)}</span>`;
                 const src = t.source || 'scalex';
                 const sourceLabels = { scalex: 'ScaleX', rebland: 'Rebland', privat: 'Privat' };
                 html += `
@@ -934,6 +966,7 @@
                         <div class="todo-check">✓</div>
                         <div class="todo-text">${esc(t.text)}</div>
                         ${dueHtml}
+                        ${durHtml}
                         <span class="todo-tag ${tagClasses[cat]}">${cat}</span>
                         <span class="todo-source-tag tag-${src}">${sourceLabels[src] || src}</span>
                         <button class="btn-danger" onclick="event.stopPropagation(); deleteTodo(${t.id})">✕</button>
@@ -1393,7 +1426,8 @@
                     done: t.Erledigt === 'TRUE' || t.erledigt === 'TRUE' || t.Erledigt === true || t.erledigt === true,
                     date: String(t.Datum || t.datum || '').substring(0,10),
                     dueDate: String(t.Faellig || t.faellig || '').substring(0,10) || null,
-                    source: t.Quelle_todo || t.quelle_todo || 'scalex'
+                    source: t.Quelle_todo || t.quelle_todo || 'scalex',
+                    duration: Number(t.Dauer || t.dauer) || 60
                 }));
 
                 // Sheet is the source of truth — replace local completely

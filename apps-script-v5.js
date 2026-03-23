@@ -32,26 +32,26 @@ function syncAll(data) {
   // === TODOS (Spalten A:G) ===
   var todos = data.todos || [];
 
-  // Alte Todo-Daten löschen (A2:H)
+  // Alte Todo-Daten löschen (A2:I)
   var lastRowTodo = Math.max(sheet.getLastRow(), 2);
   if (lastRowTodo > 1) {
-    sheet.getRange(2, 1, lastRowTodo - 1, 8).clearContent();
+    sheet.getRange(2, 1, lastRowTodo - 1, 9).clearContent();
   }
 
-  // Neue Todos schreiben (8 Spalten: A-H)
+  // Neue Todos schreiben (9 Spalten: A-I)
   if (todos.length > 0) {
     var todoRows = todos.map(function(t) {
-      return [t.id, t.datum, t.aufgabe, t.kategorie, t.erledigt, t.erstellt, t.faellig || '', t.quelle_todo || 'scalex'];
+      return [t.id, t.datum, t.aufgabe, t.kategorie, t.erledigt, t.erstellt, t.faellig || '', t.quelle_todo || 'scalex', t.dauer || 60];
     });
-    sheet.getRange(2, 1, todoRows.length, 8).setValues(todoRows);
+    sheet.getRange(2, 1, todoRows.length, 9).setValues(todoRows);
   }
 
-  // === LEISTUNGEN (Spalten I:S, also 9:19) ===
+  // === LEISTUNGEN (Spalten K:U, also 11:21) ===
   var videos = data.videos || [];
 
-  // Alte Video-Daten löschen (I2:S)
+  // Alte Video-Daten löschen (K2:U)
   if (lastRowTodo > 1) {
-    sheet.getRange(2, 9, lastRowTodo - 1, 11).clearContent();
+    sheet.getRange(2, 11, lastRowTodo - 1, 11).clearContent();
   }
 
   // Neue Videos schreiben
@@ -60,7 +60,7 @@ function syncAll(data) {
       return [v.id, v.datum, v.kunde, v.projekt, v.videoart, v.anzahl,
               v.geliefert, v.betrag, v.status, v.quelle, v.notiz];
     });
-    sheet.getRange(2, 9, videoRows.length, 11).setValues(videoRows);
+    sheet.getRange(2, 11, videoRows.length, 11).setValues(videoRows);
   }
 
   // === KALENDER-SYNC ===
@@ -110,13 +110,79 @@ function syncCalendar(todos) {
         existingEvents[j].deleteEvent();
       }
     } else if (existingEvents.length === 0) {
-      // Wenn nicht erledigt und kein Event: erstellen mit Farbe
-      var event = cal.createAllDayEvent(title, dueDate, {
-        description: 'Quelle: ' + source + '\nKategorie: ' + t.kategorie + '\nErstellt: ' + t.erstellt + '\nAus ScaleX Hub'
-      });
-      event.setColor(color);
+      // Dauer in Minuten (default 60)
+      var duration = Number(t.dauer) || 60;
+      
+      // Freien Slot finden (Arbeitszeiten 10:30-23:00)
+      var slot = findFreeSlot(cal, dueDate, duration);
+      
+      if (slot) {
+        // Zeitblock erstellen
+        var endTime = new Date(slot.getTime() + duration * 60000);
+        var event = cal.createEvent(title, slot, endTime, {
+          description: 'Quelle: ' + source + '\nKategorie: ' + t.kategorie + '\nDauer: ' + duration + ' Min\nErstellt: ' + t.erstellt + '\nAus ScaleX Hub'
+        });
+        event.setColor(color);
+      } else {
+        // Kein freier Slot — Ganztages-Event als Fallback
+        var event = cal.createAllDayEvent(title, dueDate, {
+          description: 'Quelle: ' + source + '\nKategorie: ' + t.kategorie + '\nKein freier Slot gefunden\nAus ScaleX Hub'
+        });
+        event.setColor(color);
+      }
     }
   }
+}
+
+function findFreeSlot(cal, date, durationMinutes) {
+  // Arbeitszeiten: 10:30 - 23:00
+  var workStart = 10.5; // 10:30
+  var workEnd = 23;     // 23:00
+  
+  // Start- und Endzeit des Arbeitstages
+  var dayStart = new Date(date);
+  dayStart.setHours(Math.floor(workStart), (workStart % 1) * 60, 0, 0);
+  
+  var dayEnd = new Date(date);
+  dayEnd.setHours(workEnd, 0, 0, 0);
+  
+  // Alle Events des Tages holen
+  var events = cal.getEvents(dayStart, dayEnd);
+  
+  // Events nach Startzeit sortieren
+  events.sort(function(a, b) {
+    return a.getStartTime().getTime() - b.getStartTime().getTime();
+  });
+  
+  // Freie Slots finden
+  var currentTime = dayStart.getTime();
+  var durationMs = durationMinutes * 60000;
+  
+  for (var i = 0; i < events.length; i++) {
+    var eventStart = events[i].getStartTime().getTime();
+    var eventEnd = events[i].getEndTime().getTime();
+    
+    // Ganztages-Events überspringen
+    if (events[i].isAllDayEvent()) continue;
+    
+    // Passt der Block vor diesen Termin?
+    if (eventStart - currentTime >= durationMs) {
+      return new Date(currentTime);
+    }
+    
+    // Weiter nach dem Event
+    if (eventEnd > currentTime) {
+      currentTime = eventEnd;
+    }
+  }
+  
+  // Nach dem letzten Event: passt es noch rein?
+  if (dayEnd.getTime() - currentTime >= durationMs) {
+    return new Date(currentTime);
+  }
+  
+  // Kein Slot gefunden
+  return null;
 }
 
 function cleanupCalendar(todos) {
@@ -178,21 +244,21 @@ function getAll() {
   var videos = [];
 
   for (var i = 1; i < data.length; i++) {
-    // Todos (Spalte A-G)
+    // Todos (Spalte A-I = Index 0-8)
     if (data[i][0]) {
       todos.push({
         id: data[i][0], datum: data[i][1], aufgabe: data[i][2],
         kategorie: data[i][3], erledigt: data[i][4], erstellt: data[i][5],
-        faellig: data[i][6] || ''
+        faellig: data[i][6] || '', quelle_todo: data[i][7] || 'scalex', dauer: data[i][8] || 60
       });
     }
-    // Videos (Spalte I-S = Index 8-18)
-    if (data[i][8]) {
+    // Videos (Spalte K-U = Index 10-20)
+    if (data[i][10]) {
       videos.push({
-        id: data[i][8], datum: data[i][9], kunde: data[i][10],
-        projekt: data[i][11], videoart: data[i][12], anzahl: data[i][13],
-        geliefert: data[i][14], betrag: data[i][15], status: data[i][16],
-        quelle: data[i][17], notiz: data[i][18]
+        id: data[i][10], datum: data[i][11], kunde: data[i][12],
+        projekt: data[i][13], videoart: data[i][14], anzahl: data[i][15],
+        geliefert: data[i][16], betrag: data[i][17], status: data[i][18],
+        quelle: data[i][19], notiz: data[i][20]
       });
     }
   }
