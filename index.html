@@ -202,21 +202,15 @@
             border: 2px solid var(--border); border-radius: 6px;
             display: flex; align-items: center; justify-content: center;
             transition: all 0.2s;
+            font-size: 13px;
+            color: transparent;
         }
 
         .todo-item.done .todo-check {
             background: #22c55e;
             border-color: #22c55e;
-            box-shadow: none;
+            color: #fff;
         }
-
-        .todo-check svg {
-            width: 14px; height: 14px; fill: none; stroke: #fff;
-            stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
-            opacity: 0; transition: opacity 0.15s;
-        }
-
-        .todo-item.done .todo-check svg { opacity: 1; }
 
         .todo-text { flex: 1; font-size: 0.95rem; font-weight: 500; color: var(--text-primary); }
 
@@ -873,7 +867,7 @@
                 }
                 html += `
                     <div class="todo-item ${t.done ? 'done' : ''}${overdueClass}" onclick="toggleTodo(${t.id})">
-                        <div class="todo-check"><svg viewBox="0 0 20 20"><polyline points="4 11 8 15 16 6"/></svg></div>
+                        <div class="todo-check">✓</div>
                         <div class="todo-text">${esc(t.text)}</div>
                         ${dueHtml}
                         <span class="todo-tag ${tagClasses[cat]}">${cat}</span>
