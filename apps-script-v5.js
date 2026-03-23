@@ -65,6 +65,7 @@ function syncAll(data) {
 
   // === KALENDER-SYNC ===
   syncCalendar(todos);
+  cleanupCalendar(todos);
 
   return { ok: true, todosWritten: todos.length, videosWritten: videos.length };
 }
@@ -114,6 +115,56 @@ function syncCalendar(todos) {
         description: 'Quelle: ' + source + '\nKategorie: ' + t.kategorie + '\nErstellt: ' + t.erstellt + '\nAus ScaleX Hub'
       });
       event.setColor(color);
+    }
+  }
+}
+
+function cleanupCalendar(todos) {
+  var cal = CalendarApp.getDefaultCalendar();
+  
+  // Sammle alle aktiven Todo-Titel (nicht erledigte mit Fälligkeitsdatum)
+  var activeTitles = {};
+  var prefixMap = { 'scalex': '[ScaleX] ', 'rebland': '[Rebland] ', 'privat': '[Privat] ' };
+  
+  for (var i = 0; i < todos.length; i++) {
+    var t = todos[i];
+    if (t.faellig && t.faellig !== '' && t.erledigt !== 'TRUE') {
+      var source = t.quelle_todo || 'scalex';
+      var prefix = prefixMap[source] || '[ScaleX] ';
+      activeTitles[prefix + t.aufgabe] = true;
+    }
+  }
+  
+  // Suche ScaleX Hub Events in den nächsten 90 Tagen und lösche die, die nicht mehr in der Todo-Liste sind
+  var now = new Date();
+  var future = new Date();
+  future.setDate(future.getDate() + 90);
+  
+  var allEvents = cal.getEvents(now, future, { search: 'ScaleX Hub' });
+  // Auch nach den Prefixes suchen
+  var prefixEvents = cal.getEvents(now, future, { search: '[ScaleX]' });
+  var reblandEvents = cal.getEvents(now, future, { search: '[Rebland]' });
+  var privatEvents = cal.getEvents(now, future, { search: '[Privat]' });
+  
+  var allFoundEvents = prefixEvents.concat(reblandEvents).concat(privatEvents);
+  
+  // Deduplizieren nach Event-ID
+  var seen = {};
+  var uniqueEvents = [];
+  for (var j = 0; j < allFoundEvents.length; j++) {
+    var id = allFoundEvents[j].getId();
+    if (!seen[id]) {
+      seen[id] = true;
+      uniqueEvents.push(allFoundEvents[j]);
+    }
+  }
+  
+  // Events löschen die nicht mehr in activeTitles sind
+  for (var k = 0; k < uniqueEvents.length; k++) {
+    var event = uniqueEvents[k];
+    var title = event.getTitle();
+    if (!activeTitles[title]) {
+      event.deleteEvent();
     }
   }
 }
