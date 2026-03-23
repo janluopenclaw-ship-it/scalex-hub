@@ -706,7 +706,8 @@
         try {
             const todos = getTodos().map(t => ({
                 id: String(t.id), datum: t.date, aufgabe: t.text,
-                kategorie: t.category, erledigt: t.done ? 'TRUE' : 'FALSE', erstellt: t.date
+                kategorie: t.category, erledigt: t.done ? 'TRUE' : 'FALSE', erstellt: t.date,
+                faellig: t.dueDate || ''
             }));
             const videos = getVideos().map(v => ({
                 id: String(v.id), datum: v.date, kunde: v.client,

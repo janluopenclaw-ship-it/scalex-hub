@@ -1,0 +1,134 @@
+// Apps Script v5 — JSONP Sync + Google Calendar Integration
+// Sheet: Tabellenblatt1
+// Todos: Spalten A:G (ID, Datum, Aufgabe, Kategorie, Erledigt, Erstellt, Fällig)
+// Leistungen: Spalten I:S (V_ID, Datum, Kunde, Projekt, Videoart, Anzahl, Geliefert, Stückpreis, Betrag, Status, Quelle, Notiz)
+// Kalender: Erstellt/aktualisiert Events für Todos mit Fälligkeitsdatum
+
+function doGet(e) {
+  var action = e.parameter.action || 'getAll';
+  var callback = e.parameter.callback || 'callback';
+  var result;
+
+  try {
+    if (action === 'syncAll') {
+      var data = JSON.parse(e.parameter.data);
+      result = syncAll(data);
+    } else {
+      result = getAll();
+    }
+  } catch (err) {
+    result = { ok: false, error: err.toString() };
+  }
+
+  var output = ContentService.createTextOutput(callback + '(' + JSON.stringify(result) + ')');
+  output.setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return output;
+}
+
+function syncAll(data) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Tabellenblatt1');
+
+  // === TODOS (Spalten A:G) ===
+  var todos = data.todos || [];
+
+  // Alte Todo-Daten löschen (A2:G)
+  var lastRowTodo = Math.max(sheet.getLastRow(), 2);
+  if (lastRowTodo > 1) {
+    sheet.getRange(2, 1, lastRowTodo - 1, 7).clearContent();
+  }
+
+  // Neue Todos schreiben
+  if (todos.length > 0) {
+    var todoRows = todos.map(function(t) {
+      return [t.id, t.datum, t.aufgabe, t.kategorie, t.erledigt, t.erstellt, t.faellig || ''];
+    });
+    sheet.getRange(2, 1, todoRows.length, 7).setValues(todoRows);
+  }
+
+  // === LEISTUNGEN (Spalten I:S, also 9:19) ===
+  var videos = data.videos || [];
+
+  // Alte Video-Daten löschen (I2:S)
+  if (lastRowTodo > 1) {
+    sheet.getRange(2, 9, lastRowTodo - 1, 11).clearContent();
+  }
+
+  // Neue Videos schreiben
+  if (videos.length > 0) {
+    var videoRows = videos.map(function(v) {
+      return [v.id, v.datum, v.kunde, v.projekt, v.videoart, v.anzahl,
+              v.geliefert, v.betrag, v.status, v.quelle, v.notiz];
+    });
+    sheet.getRange(2, 9, videoRows.length, 11).setValues(videoRows);
+  }
+
+  // === KALENDER-SYNC ===
+  syncCalendar(todos);
+
+  return { ok: true, todosWritten: todos.length, videosWritten: videos.length };
+}
+
+function syncCalendar(todos) {
+  var cal = CalendarApp.getDefaultCalendar();
+  var prefix = '[ScaleX] ';
+
+  // Todos mit Fälligkeitsdatum
+  var todosWithDue = todos.filter(function(t) {
+    return t.faellig && t.faellig !== '';
+  });
+
+  for (var i = 0; i < todosWithDue.length; i++) {
+    var t = todosWithDue[i];
+    var title = prefix + t.aufgabe;
+    var dueDate = new Date(t.faellig + 'T09:00:00');
+    var isDone = t.erledigt === 'TRUE';
+
+    // Suche ob Event schon existiert (anhand Titel + Datum)
+    var existingEvents = cal.getEventsForDay(dueDate, { search: prefix + t.aufgabe });
+
+    if (isDone) {
+      // Wenn erledigt: Event löschen falls vorhanden
+      for (var j = 0; j < existingEvents.length; j++) {
+        existingEvents[j].deleteEvent();
+      }
+    } else if (existingEvents.length === 0) {
+      // Wenn nicht erledigt und kein Event: erstellen
+      cal.createAllDayEvent(title, dueDate, {
+        description: 'Kategorie: ' + t.kategorie + '\nErstellt: ' + t.erstellt + '\nAus ScaleX Hub'
+      });
+    }
+    // Wenn Event schon da und nicht erledigt: nichts tun (bleibt)
+  }
+}
+
+function getAll() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Tabellenblatt1');
+  var data = sheet.getDataRange().getValues();
+
+  var todos = [];
+  var videos = [];
+
+  for (var i = 1; i < data.length; i++) {
+    // Todos (Spalte A-G)
+    if (data[i][0]) {
+      todos.push({
+        id: data[i][0], datum: data[i][1], aufgabe: data[i][2],
+        kategorie: data[i][3], erledigt: data[i][4], erstellt: data[i][5],
+        faellig: data[i][6] || ''
+      });
+    }
+    // Videos (Spalte I-S = Index 8-18)
+    if (data[i][8]) {
+      videos.push({
+        id: data[i][8], datum: data[i][9], kunde: data[i][10],
+        projekt: data[i][11], videoart: data[i][12], anzahl: data[i][13],
+        geliefert: data[i][14], betrag: data[i][15], status: data[i][16],
+        quelle: data[i][17], notiz: data[i][18]
+      });
+    }
+  }
+
+  return { ok: true, todos: todos, videos: videos };
+}
