@@ -1320,51 +1320,39 @@
         try {
             const data = await jsonp(API_URL + '?action=getAll');
 
-            if (data.todos && data.todos.length > 0) {
-                // Convert sheet format to app format
+            if (data.todos) {
+                // Convert sheet format to app format (handle both upper/lowercase keys)
                 const sheetTodos = data.todos.map(t => ({
-                    id: Number(t.ID) || Date.now(),
-                    text: t.Aufgabe,
-                    category: t.Kategorie,
-                    done: t.Erledigt === 'TRUE' || t.Erledigt === true,
-                    date: String(t.Datum || '').substring(0,10)
+                    id: Number(t.ID || t.id) || Date.now(),
+                    text: t.Aufgabe || t.aufgabe || '',
+                    category: t.Kategorie || t.kategorie || 'other',
+                    done: t.Erledigt === 'TRUE' || t.erledigt === 'TRUE' || t.Erledigt === true || t.erledigt === true,
+                    date: String(t.Datum || t.datum || '').substring(0,10),
+                    dueDate: String(t.Faellig || t.faellig || '').substring(0,10) || null
                 }));
 
-                // Merge: combine local + sheet, deduplicate by ID, keep newest
-                const localTodos = getTodos();
-                const allTodos = [...sheetTodos];
-                for (const lt of localTodos) {
-                    if (!allTodos.find(t => t.id === lt.id)) {
-                        allTodos.push(lt);
-                    }
-                }
-                saveTodosLocal(allTodos);
+                // Sheet is the source of truth — replace local completely
+                saveTodosLocal(sheetTodos);
             }
 
-            if (data.videos && data.videos.length > 0) {
+            if (data.videos) {
                 const sheetVideos = data.videos.map(v => ({
-                    id: Number(v.V_ID) || Date.now(),
-                    date: String(v.Datum || '').substring(0,10),
-                    client: v.Kunde,
-                    project: v.Projekt,
-                    type: v.Videoart,
-                    count: Number(v.Anzahl) || 1,
-                    delivered: Number(v.Geliefert) || 0,
-                    unitPrice: Number(v.Stueckpreis) || 0,
-                    betrag: Number(v.Betrag) || 0,
-                    status: v.Status,
-                    source: v.Quelle || 'Freelance',
-                    note: v.Notiz || ''
+                    id: Number(v.V_ID || v.id) || Date.now(),
+                    date: String(v.Datum || v.datum || '').substring(0,10),
+                    client: v.Kunde || v.kunde || '',
+                    project: v.Projekt || v.projekt || '',
+                    type: v.Videoart || v.videoart || '',
+                    count: Number(v.Anzahl || v.anzahl) || 1,
+                    delivered: Number(v.Geliefert || v.geliefert) || 0,
+                    unitPrice: Number(v.Stueckpreis || v.stueckpreis) || 0,
+                    betrag: Number(v.Betrag || v.betrag) || 0,
+                    status: v.Status || v.status || 'Offen',
+                    source: v.Quelle || v.quelle || 'Freelance',
+                    note: v.Notiz || v.notiz || ''
                 }));
 
-                const localVideos = getVideos();
-                const allVideos = [...sheetVideos];
-                for (const lv of localVideos) {
-                    if (!allVideos.find(v => v.id === lv.id)) {
-                        allVideos.push(lv);
-                    }
-                }
-                saveVideosLocal(allVideos);
+                // Sheet is the source of truth — replace local completely
+                saveVideosLocal(sheetVideos);
             }
 
             renderTodos();
