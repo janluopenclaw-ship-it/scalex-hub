@@ -158,6 +158,19 @@ function findFreeSlot(cal, date, durationMinutes) {
   var dayEnd = new Date(date);
   dayEnd.setHours(workEnd, 0, 0, 0);
   
+  // Wenn heute: frühestens ab JETZT starten, nicht in der Vergangenheit
+  var now = new Date();
+  if (dayStart < now) {
+    dayStart = new Date(now);
+    // Auf nächste volle 15 Minuten aufrunden
+    var mins = dayStart.getMinutes();
+    var roundUp = Math.ceil(mins / 15) * 15;
+    dayStart.setMinutes(roundUp, 0, 0);
+  }
+  
+  // Wenn der Tag schon vorbei ist (nach Arbeitsende), kein Slot möglich
+  if (dayStart >= dayEnd) return null;
+  
   // Alle Events des Tages holen
   var events = cal.getEvents(dayStart, dayEnd);
   
