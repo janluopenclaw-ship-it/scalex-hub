@@ -101,8 +101,12 @@ function syncCalendar(todos) {
     var isDone = t.erledigt === 'TRUE';
     var color = colorMap[source] || CalendarApp.EventColor.BLUE;
 
-    // Suche ob Event schon existiert (suche mit und ohne prefix)
-    var existingEvents = cal.getEventsForDay(dueDate, { search: t.aufgabe });
+    // Suche ob Event schon existiert (suche über alle Tage bis zur Deadline)
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    var deadlineEnd = new Date(dueDate);
+    deadlineEnd.setHours(23,59,59,0);
+    var existingEvents = cal.getEvents(today, deadlineEnd, { search: t.aufgabe });
 
     if (isDone) {
       // Wenn erledigt: Event löschen falls vorhanden
@@ -113,18 +117,26 @@ function syncCalendar(todos) {
       // Dauer in Minuten (default 60)
       var duration = Number(t.dauer) || 60;
       
-      // Freien Slot finden (Arbeitszeiten 10:30-23:00)
-      var slot = findFreeSlot(cal, dueDate, duration);
+      // Freien Slot suchen: ab HEUTE bis zum Fälligkeitstag (frühestmöglich)
+      var slot = null;
+      var searchDate = new Date(today);
+      
+      while (searchDate <= dueDate) {
+        slot = findFreeSlot(cal, searchDate, duration);
+        if (slot) break;
+        // Nächster Tag
+        searchDate.setDate(searchDate.getDate() + 1);
+      }
       
       if (slot) {
         // Zeitblock erstellen
         var endTime = new Date(slot.getTime() + duration * 60000);
         var event = cal.createEvent(title, slot, endTime, {
-          description: 'Quelle: ' + source + '\nKategorie: ' + t.kategorie + '\nDauer: ' + duration + ' Min\nErstellt: ' + t.erstellt + '\nAus ScaleX Hub'
+          description: 'Deadline: ' + t.faellig + '\nQuelle: ' + source + '\nKategorie: ' + t.kategorie + '\nDauer: ' + duration + ' Min\nAus ScaleX Hub'
         });
         event.setColor(color);
       } else {
-        // Kein freier Slot — Ganztages-Event als Fallback
+        // Kein freier Slot gefunden — Ganztages-Event am Deadline-Tag als Fallback
         var event = cal.createAllDayEvent(title, dueDate, {
           description: 'Quelle: ' + source + '\nKategorie: ' + t.kategorie + '\nKein freier Slot gefunden\nAus ScaleX Hub'
         });
