@@ -225,6 +225,36 @@
         .tag-call { background: rgba(255,170,0,0.12); color: var(--gold); border: 1px solid rgba(255,170,0,0.2); }
         .tag-other { background: rgba(100,200,100,0.1); color: #6ec86e; border: 1px solid rgba(100,200,100,0.15); }
 
+        .todo-source-tag {
+            font-size: 0.45rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.5px; padding: 2px 6px; border-radius: 3px;
+            font-family: 'Orbitron', monospace;
+        }
+        .tag-scalex { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+        .tag-rebland { background: rgba(255,107,0,0.15); color: var(--accent-light); border: 1px solid rgba(255,107,0,0.2); }
+        .tag-privat { background: rgba(140,140,160,0.15); color: #9ca3af; border: 1px solid rgba(140,140,160,0.2); }
+
+        .todo-source-filter-tabs {
+            display: flex; gap: 4px; margin-bottom: 16px;
+            background: var(--bg-secondary); border-radius: 8px; padding: 3px;
+            border: 1px solid var(--border); flex-wrap: wrap;
+        }
+
+        .todo-source-filter-tab {
+            padding: 5px 12px; border-radius: 6px; font-size: 0.65rem;
+            font-weight: 600; color: var(--text-dim); cursor: pointer;
+            transition: all 0.3s; border: none; background: none;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 0.5px; white-space: nowrap;
+        }
+
+        .todo-source-filter-tab.active {
+            background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255,107,0,0.3);
+        }
+        .todo-source-filter-tab:hover:not(.active) { color: var(--accent-light); }
+
         .todo-progress {
             margin-top: 20px; padding: 14px 16px;
             background: var(--bg-card); border-radius: 8px;
@@ -482,6 +512,13 @@
             <button class="todo-filter-tab" onclick="setTodoFilter('overdue')">Überfällig</button>
         </div>
 
+        <div class="todo-source-filter-tabs">
+            <button class="todo-source-filter-tab active" onclick="setTodoSourceFilter('all')">Alle</button>
+            <button class="todo-source-filter-tab" onclick="setTodoSourceFilter('scalex')">🚀 ScaleX</button>
+            <button class="todo-source-filter-tab" onclick="setTodoSourceFilter('rebland')">💼 Rebland</button>
+            <button class="todo-source-filter-tab" onclick="setTodoSourceFilter('privat')">🏠 Privat</button>
+        </div>
+
         <div class="todo-input-row">
             <input type="text" id="todoInput" placeholder="Neue Aufgabe..." onkeydown="if(event.key==='Enter') addTodo()">
             <select id="todoCategory">
@@ -489,6 +526,11 @@
                 <option value="social">📱 Social</option>
                 <option value="call">📞 Call</option>
                 <option value="other">📌 Sonstiges</option>
+            </select>
+            <select id="todoSource">
+                <option value="scalex">🚀 ScaleX</option>
+                <option value="rebland">💼 Rebland</option>
+                <option value="privat">🏠 Privat</option>
             </select>
             <input type="date" id="todoDueDate">
             <button class="btn btn-primary" onclick="addTodo()">Hinzufügen</button>
@@ -707,7 +749,7 @@
             const todos = getTodos().map(t => ({
                 id: String(t.id), datum: t.date, aufgabe: t.text,
                 kategorie: t.category, erledigt: t.done ? 'TRUE' : 'FALSE', erstellt: t.date,
-                faellig: t.dueDate || ''
+                faellig: t.dueDate || '', quelle_todo: t.source || 'scalex'
             }));
             const videos = getVideos().map(v => ({
                 id: String(v.id), datum: v.date, kunde: v.client,
@@ -766,6 +808,7 @@
 
     // === TO-DO ===
     let todoFilter = 'all';
+    let todoSourceFilter = 'all';
 
     function setTodoFilter(filter) {
         todoFilter = filter;
@@ -776,6 +819,16 @@
         });
         const titles = { all: 'Alle Aufgaben', today: 'Heutige Aufgaben', tomorrow: 'Aufgaben für Morgen', week: 'Nächste 7 Tage', month: 'Nächste 30 Tage', overdue: 'Überfällige Aufgaben' };
         document.getElementById('todoPageTitle').textContent = titles[filter] || 'Alle Aufgaben';
+        renderTodos();
+    }
+
+    function setTodoSourceFilter(source) {
+        todoSourceFilter = source;
+        document.querySelectorAll('.todo-source-filter-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.todo-source-filter-tab').forEach(t => {
+            const filterMap = { 'Alle': 'all', '🚀 ScaleX': 'scalex', '💼 Rebland': 'rebland', '🏠 Privat': 'privat' };
+            if (filterMap[t.textContent] === source) t.classList.add('active');
+        });
         renderTodos();
     }
 
@@ -811,13 +864,14 @@
     function addTodo() {
         const input = document.getElementById('todoInput');
         const cat = document.getElementById('todoCategory').value;
+        const source = document.getElementById('todoSource').value;
         const dueDateInput = document.getElementById('todoDueDate');
         const text = input.value.trim();
         if (!text) return;
 
         const dueDate = dueDateInput.value || null;
         const todos = getTodos();
-        todos.push({ id: Date.now(), text, category: cat, done: false, date: new Date().toISOString().split('T')[0], dueDate });
+        todos.push({ id: Date.now(), text, category: cat, source, done: false, date: new Date().toISOString().split('T')[0], dueDate });
         saveTodosLocal(todos);
         input.value = '';
         dueDateInput.value = '';
@@ -848,9 +902,14 @@
         scheduleSync();
     }
 
+    function filterTodosBySource(todos) {
+        if (todoSourceFilter === 'all') return todos;
+        return todos.filter(t => (t.source || 'scalex') === todoSourceFilter);
+    }
+
     function renderTodos() {
         const allTodos = getTodos();
-        const filtered = filterTodosByTime(allTodos);
+        const filtered = filterTodosBySource(filterTodosByTime(allTodos));
         const categories = { video: '🎬 Video', social: '📱 Social Media', call: '📞 Calls', other: '📌 Sonstiges' };
         const tagClasses = { video: 'tag-video', social: 'tag-social', call: 'tag-call', other: 'tag-other' };
         const today = getDateStr(0);
@@ -868,12 +927,15 @@
                     const dp = t.dueDate.split('-');
                     dueHtml = `<span class="todo-due">📅 ${dp[2]}.${dp[1]}.</span>`;
                 }
+                const src = t.source || 'scalex';
+                const sourceLabels = { scalex: 'ScaleX', rebland: 'Rebland', privat: 'Privat' };
                 html += `
                     <div class="todo-item ${t.done ? 'done' : ''}${overdueClass}" onclick="toggleTodo(${t.id})">
                         <div class="todo-check">✓</div>
                         <div class="todo-text">${esc(t.text)}</div>
                         ${dueHtml}
                         <span class="todo-tag ${tagClasses[cat]}">${cat}</span>
+                        <span class="todo-source-tag tag-${src}">${sourceLabels[src] || src}</span>
                         <button class="btn-danger" onclick="event.stopPropagation(); deleteTodo(${t.id})">✕</button>
                     </div>`;
             }
@@ -1330,7 +1392,8 @@
                     category: t.Kategorie || t.kategorie || 'other',
                     done: t.Erledigt === 'TRUE' || t.erledigt === 'TRUE' || t.Erledigt === true || t.erledigt === true,
                     date: String(t.Datum || t.datum || '').substring(0,10),
-                    dueDate: String(t.Faellig || t.faellig || '').substring(0,10) || null
+                    dueDate: String(t.Faellig || t.faellig || '').substring(0,10) || null,
+                    source: t.Quelle_todo || t.quelle_todo || 'scalex'
                 }));
 
                 // Sheet is the source of truth — replace local completely

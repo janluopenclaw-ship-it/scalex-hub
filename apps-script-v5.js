@@ -32,18 +32,18 @@ function syncAll(data) {
   // === TODOS (Spalten A:G) ===
   var todos = data.todos || [];
 
-  // Alte Todo-Daten löschen (A2:G)
+  // Alte Todo-Daten löschen (A2:H)
   var lastRowTodo = Math.max(sheet.getLastRow(), 2);
   if (lastRowTodo > 1) {
-    sheet.getRange(2, 1, lastRowTodo - 1, 7).clearContent();
+    sheet.getRange(2, 1, lastRowTodo - 1, 8).clearContent();
   }
 
-  // Neue Todos schreiben
+  // Neue Todos schreiben (8 Spalten: A-H)
   if (todos.length > 0) {
     var todoRows = todos.map(function(t) {
-      return [t.id, t.datum, t.aufgabe, t.kategorie, t.erledigt, t.erstellt, t.faellig || ''];
+      return [t.id, t.datum, t.aufgabe, t.kategorie, t.erledigt, t.erstellt, t.faellig || '', t.quelle_todo || 'scalex'];
     });
-    sheet.getRange(2, 1, todoRows.length, 7).setValues(todoRows);
+    sheet.getRange(2, 1, todoRows.length, 8).setValues(todoRows);
   }
 
   // === LEISTUNGEN (Spalten I:S, also 9:19) ===
@@ -71,7 +71,20 @@ function syncAll(data) {
 
 function syncCalendar(todos) {
   var cal = CalendarApp.getDefaultCalendar();
-  var prefix = '[ScaleX] ';
+
+  // Farben: ScaleX = BLUEBERRY (9), Rebland = TANGERINE (6), Privat = GRAPHITE (8)
+  var colorMap = {
+    'scalex': CalendarApp.EventColor.BLUE,
+    'rebland': CalendarApp.EventColor.ORANGE,
+    'privat': CalendarApp.EventColor.GRAPHITE
+  };
+
+  // Prefix je nach Quelle
+  var prefixMap = {
+    'scalex': '[ScaleX] ',
+    'rebland': '[Rebland] ',
+    'privat': '[Privat] '
+  };
 
   // Todos mit Fälligkeitsdatum
   var todosWithDue = todos.filter(function(t) {
@@ -80,12 +93,15 @@ function syncCalendar(todos) {
 
   for (var i = 0; i < todosWithDue.length; i++) {
     var t = todosWithDue[i];
+    var source = t.quelle_todo || 'scalex';
+    var prefix = prefixMap[source] || '[ScaleX] ';
     var title = prefix + t.aufgabe;
     var dueDate = new Date(t.faellig + 'T09:00:00');
     var isDone = t.erledigt === 'TRUE';
+    var color = colorMap[source] || CalendarApp.EventColor.BLUE;
 
-    // Suche ob Event schon existiert (anhand Titel + Datum)
-    var existingEvents = cal.getEventsForDay(dueDate, { search: prefix + t.aufgabe });
+    // Suche ob Event schon existiert (suche mit und ohne prefix)
+    var existingEvents = cal.getEventsForDay(dueDate, { search: t.aufgabe });
 
     if (isDone) {
       // Wenn erledigt: Event löschen falls vorhanden
@@ -93,12 +109,12 @@ function syncCalendar(todos) {
         existingEvents[j].deleteEvent();
       }
     } else if (existingEvents.length === 0) {
-      // Wenn nicht erledigt und kein Event: erstellen
-      cal.createAllDayEvent(title, dueDate, {
-        description: 'Kategorie: ' + t.kategorie + '\nErstellt: ' + t.erstellt + '\nAus ScaleX Hub'
+      // Wenn nicht erledigt und kein Event: erstellen mit Farbe
+      var event = cal.createAllDayEvent(title, dueDate, {
+        description: 'Quelle: ' + source + '\nKategorie: ' + t.kategorie + '\nErstellt: ' + t.erstellt + '\nAus ScaleX Hub'
       });
+      event.setColor(color);
     }
-    // Wenn Event schon da und nicht erledigt: nichts tun (bleibt)
   }
 }
 
