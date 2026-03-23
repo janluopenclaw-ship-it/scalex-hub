@@ -194,25 +194,25 @@
         }
 
         .todo-item:hover { background: var(--bg-card-hover); border-color: rgba(255,107,0,0.15); }
-        .todo-item.done { opacity: 0.3; }
+        .todo-item.done { opacity: 0.45; }
         .todo-item.done .todo-text { text-decoration: line-through; color: var(--text-dim); }
 
         .todo-check {
-            width: 20px; height: 20px; min-width: 20px;
-            border: 2px solid var(--border); border-radius: 50%;
+            width: 22px; height: 22px; min-width: 22px;
+            border: 2px solid var(--border); border-radius: 6px;
             display: flex; align-items: center; justify-content: center;
             transition: all 0.2s;
         }
 
         .todo-item.done .todo-check {
-            background: var(--accent);
-            border-color: var(--accent);
-            box-shadow: 0 0 8px rgba(255,107,0,0.4);
+            background: #22c55e;
+            border-color: #22c55e;
+            box-shadow: none;
         }
 
         .todo-check svg {
-            width: 12px; height: 12px; fill: none; stroke: #fff;
-            stroke-width: 2.5; stroke-linecap: round;
+            width: 14px; height: 14px; fill: none; stroke: #fff;
+            stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
             opacity: 0; transition: opacity 0.15s;
         }
 
