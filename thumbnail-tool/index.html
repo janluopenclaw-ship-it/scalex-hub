@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thumbnail Generator • ScaleX Media</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-primary: #0d0d12;
+    --bg-secondary: #13131a;
+    --bg-card: #16161f;
+    --border: #2a2a3a;
+    --accent: #ff6b00;
+    --accent-glow: rgba(255, 107, 0, 0.35);
+    --text-primary: #f0ece4;
+    --text-secondary: #8a8a9a;
+    --font-display: 'Orbitron', sans-serif;
+    --font-body: 'Rajdhani', sans-serif;
+  }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-weight: 500;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ── Hexagon Grid Background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34L28 66zm0 34L0 84V50l28-16 28 16v34L28 100z' fill='none' stroke='%23ff6b00' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 56px 100px;
+    pointer-events: none;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 3rem;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  header h1 {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 24px var(--accent-glow);
+  }
+
+  header .subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-top: 0.4rem;
+  }
+
+  /* ── Card wrapper ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+  }
+
+  /* ── Form elements ── */
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+  }
+
+  textarea, select {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 120px;
+    margin-bottom: 1.25rem;
+  }
+
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a8a9a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+    cursor: pointer;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
+
+  /* ── Primary Button ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 1rem 2rem;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), #e05500);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.25s;
+    box-shadow: 0 4px 20px rgba(255, 107, 0, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(255, 107, 0, 0.45);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* ── Status / Loader ── */
+  #status {
+    display: none;
+    text-align: center;
+    padding: 2rem 1rem;
+  }
+
+  #status.visible { display: block; }
+
+  .loader {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .pulse-ring {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    position: relative;
+  }
+
+  .pulse-ring::before, .pulse-ring::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .pulse-ring::before {
+    animation: pulse 1.6s ease-out infinite;
+  }
+
+  .pulse-ring::after {
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: none;
+  }
+
+  @keyframes pulse {
+    0%   { transform: scale(0.3); opacity: 0.8; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+
+  #status-text {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  #status-sub {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+  }
+
+  /* ── Gallery ── */
+  #gallery {
+    display: none;
+  }
+
+  #gallery.visible { display: block; }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 700px) {
+    .gallery-grid { grid-template-columns: 1fr; }
+  }
+
+  .thumb-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.25s, box-shadow 0.25s;
+    cursor: pointer;
+  }
+
+  .thumb-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  .thumb-card img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+  }
+
+  .thumb-card .actions {
+    padding: 0.75rem;
+    text-align: center;
+  }
+
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1.25rem;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    text-decoration: none;
+  }
+
+  .btn-download:hover {
+    border-color: var(--accent);
+    background: rgba(255, 107, 0, 0.1);
+  }
+
+  /* ── Modal ── */
+  #modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.88);
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  #modal.visible {
+    display: flex;
+  }
+
+  #modal img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  }
+
+  #modal-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.5rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s;
+  }
+
+  #modal-close:hover {
+    border-color: var(--accent);
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    padding: 2.5rem 0 1rem;
+  }
+
+  footer span { color: var(--accent); }
+
+  /* ── Error ── */
+  .error-msg {
+    background: rgba(255, 60, 60, 0.1);
+    border: 1px solid rgba(255, 60, 60, 0.3);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    color: #ff6b6b;
+    font-weight: 600;
+    margin-top: 1rem;
+    display: none;
+  }
+
+  .error-msg.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <h1>◈ THUMBNAIL GENERATOR</h1>
+    <p class="subtitle">KI-gestützte YouTube Thumbnails in Sekunden</p>
+  </header>
+
+  <!-- Input Card -->
+  <div class="card">
+    <div class="card-title">Eingabe</div>
+
+    <label for="topic">Video-Thema / Transkript</label>
+    <textarea id="topic" placeholder="Video-Thema oder Transkript eingeben..."></textarea>
+
+    <div class="form-row">
+      <div>
+        <label for="template">Template</label>
+        <select id="template">
+          <option value="auto">🎯 Auto (empfohlen)</option>
+          <option value="a">✅ A: Standard Positiv</option>
+          <option value="b">⚠️ B: Warnung/Fehler</option>
+          <option value="c">🔀 C: Split-Screen</option>
+          <option value="d">🔍 D: Curiosity Gap</option>
+          <option value="e">👔 E: Premium</option>
+          <option value="f">👥 F: Menschenmenge</option>
+        </select>
+      </div>
+      <div>
+        <label for="position">Position</label>
+        <select id="position">
+          <option value="left">Links</option>
+          <option value="right">Rechts</option>
+          <option value="center">Mitte</option>
+        </select>
+      </div>
+      <div>
+        <label for="mood">Stimmung</label>
+        <select id="mood">
+          <option value="positive">😊 Positiv</option>
+          <option value="warning">⚠️ Warnung</option>
+          <option value="thinking">🤔 Nachdenklich</option>
+          <option value="shock">😱 Schock</option>
+          <option value="confident">😎 Selbstbewusst</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="generate-btn" onclick="generateThumbnails()">
+      🎨 Thumbnails Generieren
+    </button>
+
+    <div class="error-msg" id="error"></div>
+  </div>
+
+  <!-- Status -->
+  <div id="status" class="card">
+    <div class="pulse-ring"></div>
+    <div id="status-text">Generiere Thumbnail 1/3...</div>
+    <div id="status-sub">~60 Sekunden</div>
+  </div>
+
+  <!-- Gallery -->
+  <div id="gallery">
+    <div class="card">
+      <div class="card-title">Ergebnisse</div>
+      <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>Powered by <span>Gemini Pro</span> • ScaleX Media</footer>
+</div>
+
+<!-- Modal -->
+<div id="modal">
+  <button id="modal-close" onclick="closeModal()">✕</button>
+  <img id="modal-img" src="" alt="Thumbnail Vollansicht">
+</div>
+
+<script>
+  const API_URL = '';
+
+  // DOM refs
+  const topicEl     = document.getElementById('topic');
+  const templateEl  = document.getElementById('template');
+  const positionEl  = document.getElementById('position');
+  const moodEl      = document.getElementById('mood');
+  const generateBtn = document.getElementById('generate-btn');
+  const statusEl    = document.getElementById('status');
+  const statusText  = document.getElementById('status-text');
+  const statusSub   = document.getElementById('status-sub');
+  const galleryEl   = document.getElementById('gallery');
+  const galleryGrid = document.getElementById('gallery-grid');
+  const errorEl     = document.getElementById('error');
+  const modalEl     = document.getElementById('modal');
+  const modalImg    = document.getElementById('modal-img');
+
+  // ── Generate Thumbnails ──
+  function generateThumbnails() {
+    const topic = topicEl.value.trim();
+    if (!topic) {
+      showError('Bitte ein Video-Thema oder Transkript eingeben.');
+      return;
+    }
+
+    if (!API_URL) {
+      showError('API-URL ist noch nicht konfiguriert. Bitte API_URL im Code setzen.');
+      return;
+    }
+
+    hideError();
+    galleryEl.classList.remove('visible');
+    statusEl.classList.add('visible');
+    generateBtn.disabled = true;
+
+    let step = 1;
+    const progressInterval = setInterval(() => {
+      step = Math.min(step + 1, 3);
+      statusText.textContent = `Generiere Thumbnail ${step}/3...`;
+    }, 20000);
+
+    // JSONP call
+    const callbackName = 'thumbnailCallback_' + Date.now();
+    const params = new URLSearchParams({
+      topic:    topic,
+      template: templateEl.value,
+      position: positionEl.value,
+      mood:     moodEl.value,
+      callback: callbackName
+    });
+
+    window[callbackName] = function(data) {
+      clearInterval(progressInterval);
+      cleanup();
+
+      if (data && data.ok && data.thumbnails && data.thumbnails.length) {
+        showGallery(data.thumbnails);
+      } else {
+        showError(data?.error || 'Etwas ist schiefgelaufen. Bitte erneut versuchen.');
+      }
+    };
+
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params.toString();
+    script.onerror = function() {
+      clearInterval(progressInterval);
+      cleanup();
+      showError('Verbindung zum Server fehlgeschlagen. Bitte später erneut versuchen.');
+    };
+    document.body.appendChild(script);
+
+    function cleanup() {
+      statusEl.classList.remove('visible');
+      generateBtn.disabled = false;
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+  }
+
+  // ── Show Gallery ──
+  function showGallery(thumbnails) {
+    galleryGrid.innerHTML = '';
+
+    thumbnails.forEach((thumb, i) => {
+      const card = document.createElement('div');
+      card.className = 'thumb-card';
+
+      const img = document.createElement('img');
+      img.src = thumb.url;
+      img.alt = thumb.filename || `Thumbnail ${i + 1}`;
+      img.loading = 'lazy';
+      img.onclick = () => openModal(thumb.url);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const dlBtn = document.createElement('a');
+      dlBtn.className = 'btn-download';
+      dlBtn.href = thumb.url;
+      dlBtn.download = thumb.filename || `thumbnail_${i + 1}.png`;
+      dlBtn.innerHTML = '⬇️ Download';
+      dlBtn.onclick = (e) => {
+        e.stopPropagation();
+        downloadImage(thumb.url, thumb.filename || `thumbnail_${i + 1}.png`);
+        e.preventDefault();
+      };
+
+      actions.appendChild(dlBtn);
+      card.appendChild(img);
+      card.appendChild(actions);
+      galleryGrid.appendChild(card);
+    });
+
+    galleryEl.classList.add('visible');
+    galleryEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Download helper (cross-origin safe) ──
+  function downloadImage(url, filename) {
+    fetch(url)
+      .then(r => r.blob())
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => {
+        // Fallback: open in new tab
+        window.open(url, '_blank');
+      });
+  }
+
+  // ── Modal ──
+  function openModal(src) {
+    modalImg.src = src;
+    modalEl.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    modalEl.classList.remove('visible');
+    modalImg.src = '';
+    document.body.style.overflow = '';
+  }
+
+  modalEl.addEventListener('click', (e) => {
+    if (e.target === modalEl) closeModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // ── Error helpers ──
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('visible');
+  }
+
+  function hideError() {
+    errorEl.classList.remove('visible');
+  }
+</script>
+</body>
+</html>
