@@ -3,7 +3,7 @@
 // Bilder werden auf Google Drive gespeichert und URLs zurückgegeben
 
 // === CONFIG ===
-var GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || 'AIzaSyCRVWpbR44MDiXUW9Akhlsmtrl8uIRtcEo';
+var GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
 var DRIVE_FOLDER_NAME = 'Thumbnail Generator Output';
 
 // === HEADSHOT CONFIG ===
