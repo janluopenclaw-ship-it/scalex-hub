@@ -301,6 +301,6 @@ function saveToGDrive(base64Data, filename) {
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
-  // Return direct download URL
-  return 'https://drive.google.com/uc?export=view&id=' + file.getId();
+  // Return thumbnail URL (works better for cross-origin img tags)
+  return 'https://lh3.googleusercontent.com/d/' + file.getId();
 }
