@@ -3,7 +3,7 @@
 // Bilder werden auf Google Drive gespeichert und URLs zurückgegeben
 
 // === CONFIG ===
-var GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+var GEMINI_API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || 'AIzaSyCRVWpbR44MDiXUW9Akhlsmtrl8uIRtcEo';
 var DRIVE_FOLDER_NAME = 'Thumbnail Generator Output';
 
 // === HEADSHOT CONFIG ===
@@ -116,16 +116,18 @@ function generateThumbnails(topic, templateKey, position, mood) {
   var textSuggestions = generateTextSuggestions(topic, templateKey);
   
   var thumbnails = [];
+  var debugInfo = { apiKey: GEMINI_API_KEY ? 'set (length ' + GEMINI_API_KEY.length + ')' : 'MISSING', textSuggestions: textSuggestions };
   
-  for (var i = 0; i < 3; i++) {
+  // Generate only 1 thumbnail per request (Apps Script timeout is ~6min)
+  for (var i = 0; i < 1; i++) {
     var texts = textSuggestions[i] || textSuggestions[0];
     
     var prompt = buildPrompt(template, moodPrompt, posPrompt, texts.top, texts.bottom, position);
     
     try {
-      var imageUrl = callGeminiImageApi(prompt);
-      if (imageUrl) {
-        var driveUrl = saveToGDrive(imageUrl, 'thumbnail_' + templateKey + '_' + (i+1) + '_' + Date.now() + '.png');
+      var imageData = callGeminiImageApi(prompt);
+      if (imageData) {
+        var driveUrl = saveToGDrive(imageData, 'thumbnail_' + templateKey + '_' + (i+1) + '_' + Date.now() + '.png');
         thumbnails.push({
           url: driveUrl,
           filename: 'thumbnail_' + (i+1) + '.png',
@@ -133,13 +135,15 @@ function generateThumbnails(topic, templateKey, position, mood) {
           bottomText: texts.bottom,
           template: templateKey
         });
+      } else {
+        thumbnails.push({ error: 'No image data for thumbnail ' + (i+1), prompt: prompt.substring(0, 200) });
       }
     } catch (err) {
-      Logger.log('Error generating thumbnail ' + (i+1) + ': ' + err);
+      thumbnails.push({ error: err.toString(), stack: (err.stack || '').substring(0, 200) });
     }
   }
   
-  return { ok: true, thumbnails: thumbnails, template: templateKey };
+  return { ok: true, thumbnails: thumbnails, template: templateKey, debug: debugInfo };
 }
 
 function autoSelectTemplate(topic) {
@@ -203,7 +207,7 @@ function buildPrompt(template, moodPrompt, posPrompt, topText, bottomText, posit
 }
 
 function callGeminiImageApi(prompt) {
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=' + GEMINI_API_KEY;
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=' + GEMINI_API_KEY;
   
   var payload = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -219,23 +223,46 @@ function callGeminiImageApi(prompt) {
     muteHttpExceptions: true
   };
   
+  Logger.log('Calling Gemini with prompt length: ' + prompt.length);
   var response = UrlFetchApp.fetch(url, options);
-  var data = JSON.parse(response.getContentText());
+  var responseCode = response.getResponseCode();
+  var responseText = response.getContentText();
+  Logger.log('Response code: ' + responseCode);
+  Logger.log('Response length: ' + responseText.length);
+  
+  if (responseCode !== 200) {
+    Logger.log('API Error: ' + responseText.substring(0, 500));
+    return null;
+  }
+  
+  var data = JSON.parse(responseText);
+  
+  if (data.error) {
+    Logger.log('Gemini Error: ' + data.error.message);
+    return null;
+  }
   
   if (data.candidates && data.candidates[0] && data.candidates[0].content) {
     var parts = data.candidates[0].content.parts;
+    Logger.log('Parts count: ' + parts.length);
     for (var i = 0; i < parts.length; i++) {
       if (parts[i].inlineData) {
-        return parts[i].inlineData.data; // base64 image data
+        Logger.log('Found image! Mime: ' + parts[i].inlineData.mimeType + ' Data length: ' + parts[i].inlineData.data.length);
+        return parts[i].inlineData.data;
+      }
+      if (parts[i].text) {
+        Logger.log('Text part: ' + parts[i].text.substring(0, 100));
       }
     }
+  } else {
+    Logger.log('No candidates in response: ' + responseText.substring(0, 300));
   }
   
   return null;
 }
 
 function callGeminiTextApi(prompt) {
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY;
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + GEMINI_API_KEY;
   
   var payload = {
     contents: [{ parts: [{ text: prompt }] }]

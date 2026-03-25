@@ -484,64 +484,62 @@
   const modalImg    = document.getElementById('modal-img');
 
   // ── Generate Thumbnails ──
-  function generateThumbnails() {
-    const topic = topicEl.value.trim();
-    if (!topic) {
-      showError('Bitte ein Video-Thema oder Transkript eingeben.');
-      return;
-    }
+  function jsonpCall(url) {
+    return new Promise((resolve, reject) => {
+      const cb = '_cb_' + Math.random().toString(36).slice(2);
+      const timeout = setTimeout(() => { cleanup(); reject(new Error('Timeout')); }, 120000);
+      function cleanup() { clearTimeout(timeout); delete window[cb]; const s = document.getElementById(cb); if (s) s.remove(); }
+      window[cb] = function(data) { cleanup(); resolve(data); };
+      const script = document.createElement('script');
+      script.id = cb;
+      script.src = url + '&callback=' + cb;
+      script.onerror = function() { cleanup(); reject(new Error('Load error')); };
+      document.body.appendChild(script);
+    });
+  }
 
-    if (!API_URL) {
-      showError('API-URL ist noch nicht konfiguriert. Bitte API_URL im Code setzen.');
-      return;
-    }
+  async function generateThumbnails() {
+    const topic = topicEl.value.trim();
+    if (!topic) { showError('Bitte ein Video-Thema oder Transkript eingeben.'); return; }
+    if (!API_URL) { showError('API-URL ist noch nicht konfiguriert.'); return; }
 
     hideError();
     galleryEl.classList.remove('visible');
     statusEl.classList.add('visible');
     generateBtn.disabled = true;
 
-    let step = 1;
-    const progressInterval = setInterval(() => {
-      step = Math.min(step + 1, 3);
-      statusText.textContent = `Generiere Thumbnail ${step}/3...`;
-    }, 20000);
+    const allThumbnails = [];
 
-    // JSONP call
-    const callbackName = 'thumbnailCallback_' + Date.now();
-    const params = new URLSearchParams({
-      topic:    topic,
-      template: templateEl.value,
-      position: positionEl.value,
-      mood:     moodEl.value,
-      callback: callbackName
-    });
+    for (let i = 0; i < 3; i++) {
+      statusText.textContent = `Generiere Thumbnail ${i + 1}/3...`;
+      
+      const params = new URLSearchParams({
+        action: 'generate',
+        topic: topic,
+        template: templateEl.value,
+        position: positionEl.value,
+        mood: moodEl.value
+      });
 
-    window[callbackName] = function(data) {
-      clearInterval(progressInterval);
-      cleanup();
-
-      if (data && data.ok && data.thumbnails && data.thumbnails.length) {
-        showGallery(data.thumbnails);
-      } else {
-        showError(data?.error || 'Etwas ist schiefgelaufen. Bitte erneut versuchen.');
+      try {
+        const data = await jsonpCall(API_URL + '?' + params.toString());
+        if (data && data.ok && data.thumbnails) {
+          for (const t of data.thumbnails) {
+            if (!t.error) allThumbnails.push(t);
+          }
+        }
+      } catch (err) {
+        console.error('Thumbnail ' + (i+1) + ' error:', err);
       }
-    };
+    }
 
-    const script = document.createElement('script');
-    script.src = API_URL + '?' + params.toString();
-    script.onerror = function() {
-      clearInterval(progressInterval);
-      cleanup();
-      showError('Verbindung zum Server fehlgeschlagen. Bitte später erneut versuchen.');
-    };
-    document.body.appendChild(script);
+    statusEl.classList.remove('visible');
+    generateBtn.disabled = false;
 
-    function cleanup() {
-      statusEl.classList.remove('visible');
-      generateBtn.disabled = false;
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
+    if (allThumbnails.length > 0) {
+      showGallery(allThumbnails);
+    } else {
+      showError('Keine Thumbnails generiert. Bitte erneut versuchen.');
     }
   }
 
